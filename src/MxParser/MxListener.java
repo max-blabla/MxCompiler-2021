@@ -258,6 +258,16 @@ public interface MxListener extends ParseTreeListener {
 	 */
 	void exitNewSingle(MxParser.NewSingleContext ctx);
 	/**
+	 * Enter a parse tree produced by {@link MxParser#newErrorArray}.
+	 * @param ctx the parse tree
+	 */
+	void enterNewErrorArray(MxParser.NewErrorArrayContext ctx);
+	/**
+	 * Exit a parse tree produced by {@link MxParser#newErrorArray}.
+	 * @param ctx the parse tree
+	 */
+	void exitNewErrorArray(MxParser.NewErrorArrayContext ctx);
+	/**
 	 * Enter a parse tree produced by {@link MxParser#newArrayExp}.
 	 * @param ctx the parse tree
 	 */

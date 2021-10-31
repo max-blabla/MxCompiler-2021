@@ -161,6 +161,12 @@ public interface MxVisitor<T> extends ParseTreeVisitor<T> {
 	 */
 	T visitNewSingle(MxParser.NewSingleContext ctx);
 	/**
+	 * Visit a parse tree produced by {@link MxParser#newErrorArray}.
+	 * @param ctx the parse tree
+	 * @return the visitor result
+	 */
+	T visitNewErrorArray(MxParser.NewErrorArrayContext ctx);
+	/**
 	 * Visit a parse tree produced by {@link MxParser#newArrayExp}.
 	 * @param ctx the parse tree
 	 * @return the visitor result
