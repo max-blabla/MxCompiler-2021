@@ -1,4 +1,5 @@
 grammar Mx;
+@header{package MxParser;}
 
 program
     :   definition*
@@ -12,23 +13,40 @@ program
     ;*/
 
 
+
 definition
     :   funcDef
-    |   varDef Semi
-    |   classDef Semi
+    |   varDef Semi*
+    |   classDef Semi*
     ;
+
+
+
 
 funcDef
     :   returnType Identifier LeftParenthes parameterList RightParenthes suite
     ;
 
-memberDef
-    :   Identifier LeftParenthes parameterList RightParenthes suite
-    |   definition
+conFuncDef
+    : Identifier LeftParenthes parameterList RightParenthes suite
+    ;
+
+memberFuncDef
+    :   funcDef
+    ;
+
+memberVarDef
+    : varDef
+    ;
+
+memberDefinition
+    :   conFuncDef
+    |   memberFuncDef
+    |   memberVarDef Semi*
     ;
 
 classSpace
-    :   LeftBrace memberDef* RightBrace
+    :   LeftBrace memberDefinition* RightBrace
     ;
 
 classDef
@@ -41,44 +59,113 @@ varDef
 
 varDeclaration
     : Identifier (Assign expression)?
-    | (LeftBracket RightBracket)+ Identifier (Assign expression)?
     ;
 
 parameterList
     :   (type Identifier (Comma type Identifier)*)? ;
 
 expressionList
-    : expression (Comma expression)*;
+    : (expression (Comma expression)*)?;
 
 suite
     :   LeftBrace statement* RightBrace
     ;
 
+ifStatement
+    : If LeftParenthes condition RightParenthes trueStmt = statement
+    ;
+
+elseStatement
+    : Else falseStmt = statement
+    ;
+
+ifElseStatement
+    :  ifStatement//if Stmt
+       elseStatement?
+    ;
+
+
+forStatement
+    : For LeftParenthes (expStatement|varDef)? Semi condition? Semi expStatement? RightParenthes statement
+    ;
+
+whileStatement
+    : While LeftParenthes condition RightParenthes statement
+    ;
+
+returnStatement
+    : Return expression?
+    ;
+
+jumpStatement
+    : Break
+    | Continue
+    ;
+
+expStatement
+    : expression
+    ;
+
+
 statement
     :   suite  //block
     |   varDef Semi//varDef
-    |   If LeftParenthes expression RightParenthes trueStmt = statement //if Stmt
-        (Else falseStmt = statement)?
-    |   For LeftParenthes (expression|varDef)? Semi expression? Semi expression? RightParenthes statement //for Stmt
-    |   While LeftParenthes expression RightParenthes statement
-    |   Return expression? Semi    //return Stmt
-    |   expression Semi //pure Stmt
+    |   ifElseStatement
+    |   forStatement
+    |   whileStatement
+    |   returnStatement Semi    //return Stmt
+    |   expStatement Semi //pure exp
+    |   jumpStatement Semi
     |   Semi   //empty Stmt
+    ;
+
+lambdaExpression
+    : LeftBracket And RightBracket LeftParenthes parameterList RightParenthes RightArrow suite //lambda
+    ;
+
+newSingle
+    :  New singleType (LeftParenthes RightParenthes)? //new Expr
+    ;
+
+newErrorArray
+    : New singleType (LeftBracket expression RightBracket)+(LeftBracket RightBracket)+(LeftBracket expression RightBracket)+
+    ;
+
+newArrayExp
+    : (LeftBracket expression RightBracket)+(LeftBracket RightBracket)*
+    ;
+
+newArray
+    :  New singleType newArrayExp//newArrayExpr
+    ;
+
+indexExpr
+    : (LeftBracket expression RightBracket)+
+    ;
+
+funcExpr
+    :  LeftParenthes expressionList RightParenthes
+    ;
+
+condition
+    : expression
+    ;
+
+leftSelfExprssion
+    : op=('+'|'-') expression // unaryExpr
+    | op=('++'|'--') expression
+    | op='!' expression
+    | op='~' expression
     ;
 
 expression
     :   primary
-    |   LeftBracket And RightBracket LeftParenthes //lambda
-    |   New type (LeftParenthes RightParenthes)? //new Expr
-    |   New type (LeftBracket expression RightBracket)(LeftBracket expression? RightBracket)* //newArrayExpr
-    |   expression LeftBracket expression RightBracket //indexExpr []
-    |   expression LeftParenthes expressionList? RightParenthes // functionExpr ()
+    |   lambdaExpression
+    |   expression  indexExpr//indexExpr []
+    |   expression  funcExpr// functionExpr ()
     |   expression op='.' expression //memExpr
-    |   op=('+'|'-') expression // unaryExpr
-    |   op=('++'|'--') expression //unaryExpr
+    |   leftSelfExprssion
     |   <assoc = right> expression op=('++'|'--')  //unaryExpr
-    |   op='!' expression //unaryExpr
-    |   op='~' expression //unaryExpr
     |   expression op=('*'|'/'|'%') expression //binaryExpr
     |   expression op=('+'|'-') expression //binaryExpr
     |   expression op=('<<'|'>>') expression //binaryExpr
@@ -92,32 +179,44 @@ expression
     |   <assoc = right> expression op='=' expression //assignExpr
     ;
 
+
+
+
+parenthes
+    : LeftParenthes expression RightParenthes
+    ;
+
+label
+    :  Identifier
+    |  This
+    ;
+
 primary
-    :   LeftParenthes expression RightParenthes
-    |   Identifier
-    |   Break
-    |   Continue
-    |   This
+    :   parenthes
+    |   label
+    |  newErrorArray
+    |   newArray
+    |   newSingle
     |   literal
     ;
 
 literal
-    :   Integer
-    |   StringConst
-    |   Numeric
-    |   True
-    |   False
-    |   Null
+    : literalType = (Integer|StringConst|Numeric|True| False|Null)
     ;
+
 
 returnType
     :   Void
     |   type
     ;
 
+singleType
+    : builtinType
+    | Identifier
+    ;
+
 type
-    :   builtinType (LeftBracket RightBracket)*
-    |   Identifier (LeftBracket RightBracket)*
+    :   singleType (LeftBracket RightBracket)*
     ;
 
 builtinType
@@ -226,7 +325,7 @@ Numeric : Integer Dot DIGIT+;
 
 
 WhiteSpace : [\t ]+->skip;	//skip spaces,tabs,newlines,\r(Windows)
-Newline : ('\r''\n'?|'\n'){System.out.println("match newline");}->skip;
+Newline : ('\r''\n'?|'\n')->skip;
 BlockComment : '/*'.*?'*/'->skip;
 LineComment :'//'~[\r\n]*->skip;
 fragment
