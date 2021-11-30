@@ -1,8 +1,7 @@
-# 不要用g4的Listener!
+# 我是SB
+# 我是SB
 
-# 不要用g4的Listener!
+# 我是SB
 
-# 不要用g4的Listener!
-
-# 快去用Vistor
+# Vistor和Listener都可以
 
