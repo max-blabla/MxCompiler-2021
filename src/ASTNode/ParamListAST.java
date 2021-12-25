@@ -1,11 +1,17 @@
 package ASTNode;
 
+import java.util.ArrayList;
 import java.util.List;
 
-public class ParamListAST{
-    List<ParamPair> ParamList;
-}
-class ParamPair{
-    Integer ParamType;
-    String ParamName;
+public class ParamListAST extends BaseAST{
+    List<VarDeclAST> ParamTypeList = new ArrayList<>();
+    @Override
+    public void InsertSon(BaseAST Son) {
+        if(Son instanceof VarDeclAST){
+            VarDeclAST NewSon = (VarDeclAST) Son;
+            ParamTypeList.add(NewSon);
+            Son.Father = this;
+        }
+        else  new BuildError("ParamListAST","InsertSon","");
+    }
 }

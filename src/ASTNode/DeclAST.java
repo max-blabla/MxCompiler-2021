@@ -1,4 +1,4 @@
 package ASTNode;
-public class DeclAST{
+abstract public class DeclAST extends BaseAST{
 
 }

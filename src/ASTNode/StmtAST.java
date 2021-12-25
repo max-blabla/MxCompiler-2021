@@ -1,3 +1,3 @@
 package ASTNode;
-public class StmtAST{
+abstract public class StmtAST extends BaseAST{
 };
