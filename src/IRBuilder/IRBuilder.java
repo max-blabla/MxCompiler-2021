@@ -51,7 +51,7 @@ public class IRBuilder{
         List<VarDeclareAST> VarDeclList = VarNode.getVarDeclareList();
         IRModule TopModule = ModuleList.get(ModuleList.size()-1);
         for(VarDeclareAST VarDecl : VarDeclList){
-            IRVarPair irVarPair = new IRVarPair();
+            IRValue irVarPair = new IRValue();
             irVarPair.Type = VarNode.getType();
             irVarPair.Name = VarDecl.getId();
             irVarPair.Expr = VarDecl.getExpr();
@@ -65,6 +65,7 @@ public class IRBuilder{
 
         //TODO 分配 this 指针 (即在参数表和VarTable里塞this)和 参数 表
         //TODO 在这里所有的类型都是IR类型
+        //TODO 设置ModuleName
         IRFunc NewFunc = new IRFunc();
         CurFunc = NewFunc;
         NewFunc.FuncName = FuncNode.getFuncName();

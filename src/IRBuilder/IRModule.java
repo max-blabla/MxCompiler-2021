@@ -7,10 +7,10 @@ import java.util.List;
 
 public class IRModule{
     String Name;
-    HashMap<String, IRVarPair> VarTable;
+    HashMap<String, IRValue> VarTable;
     List<IRFunc> FuncSet;
     Boolean IsUsed;
-    public void VarInsert(IRVarPair varPair){
+    public void VarInsert(IRValue varPair){
         VarTable.put(varPair.Name, varPair);
     }
     public void FuncInsert(IRFunc irFunc){
@@ -22,6 +22,6 @@ public class IRModule{
     public IRFunc getTopFunc(){ return FuncSet.get(FuncSet.size() - 1);}
     public String getName(){return Name;}
     public List<IRFunc> getFuncSet(){return FuncSet;}
-    public HashMap<String,IRVarPair> getVarTable(){return VarTable;}
+    public HashMap<String,IRValue> getVarTable(){return VarTable;}
 
 }

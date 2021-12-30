@@ -2,13 +2,12 @@ package IRBuilder;
 
 import ASTNode.ExprAST;
 
-public class IRVarPair{
+public class IRValue{
     String Type;
     String Name;
-    ExprAST Expr;
     Integer Index;//表示在Module中的相对位置 而Block 中 为临时变量 不需要
     String PtrReg;//对于匿名变量需要
-    IRVarPair(){
+    IRValue(){
         PtrReg  = "";
     }
     public String getIRType(){

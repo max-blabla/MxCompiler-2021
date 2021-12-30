@@ -2,8 +2,8 @@ package ASTNode;
 
 public enum ExprType{
         Primary,
-        FuncCall,
-        ExprList,
+        FuncCall, //D
+        ExprList, // D
         Lambda,
         MemCall,
         Index,
@@ -15,7 +15,7 @@ public enum ExprType{
         Tidle,
         LeftSelfMinus,
         RightSelfMinus,
-        Plus,
+        Plus, // D
         Minus,
         Multiply,
         Divide,
@@ -37,6 +37,6 @@ public enum ExprType{
         Null,
         Par,
         New,
-        Label,
+        Label, //D
         Literal
 };

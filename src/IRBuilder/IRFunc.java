@@ -7,6 +7,7 @@ class IRFunc{
     String RetType;
     IRBlock Start;
     Boolean IsUsed;
+    String ModuleName;
     public String getIrRetType(){return "i32";}
 
     public String getFuncName() {

@@ -14,7 +14,7 @@ public class IRBlock{
     String Label;
     List<IRInstrPair> ExprInstrList = new ArrayList<>();
     List<BaseInstr> VarInstrList = new ArrayList<>();
-    HashMap<String, IRVarPair> VarList;
+    HashMap<String, IRValue> VarList;
     Boolean shutFlag;
     ShutType shutType;
     BaseInstr EndInstr;
@@ -41,7 +41,7 @@ public class IRBlock{
         ExprInstrList.add(new IRInstrPair(Expr,new ArrayList<>()));
     }
     public void InsertVarDecl(String Type, String Name , ExprAST Expr){
-        IRVarPair NewPair = new IRVarPair();
+        IRValue NewPair = new IRValue();
         NewPair.Type = Type;
         NewPair.Name = Name;
         NewPair.Expr = Expr;
