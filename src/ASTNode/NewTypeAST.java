@@ -19,7 +19,10 @@ public class NewTypeAST extends ExprAST{
             NewSon.Father = this;
             ExprList.add(NewSon);
         }
-        else if(Son instanceof IdAST SingleType)  SingleType.Father = this;
+        else if(Son instanceof IdAST ){
+            ExprAST SingleType = (ExprAST) Son;
+            SingleType.Father = this;
+        }
         else new BuildError("NewTypeAST","InsertSon","");
     }
     public List<BaseAST> GetSon(){

@@ -277,8 +277,16 @@ public class CodeGenerator {
         Blocks.addAll(Func.BlocksCode);
         for(BlockSection Block : Blocks) {
             for (BaseCode Code : Block.CodeList){
-                if (Code instanceof SCode Store) { if (Objects.equals(Store.Rs2, "sp")) Store.Imm += StackSize;}
-                else if(Code instanceof LCode Load) { if (Objects.equals(Load.Rs, "sp")) Load.Offset += StackSize;}
+                if (Code instanceof SCode ) {
+                    SCode Store = (SCode) Code;
+                    if (Objects.equals(Store.Rs2, "sp")) Store.Imm += StackSize;
+                }
+                else if(Code instanceof LCode) {
+
+                    LCode Load = (LCode) Code;
+
+                    if (Objects.equals(Load.Rs, "sp")) Load.Offset += StackSize;
+                }
 
             }
         }

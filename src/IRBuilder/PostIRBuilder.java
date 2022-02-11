@@ -114,7 +114,10 @@ public class PostIRBuilder {
             BranchInstr Br = (BranchInstr) Root.EndInstr;
             if(!Objects.equals(Br.Condition, "")) AddRegUsage(Br.Condition);
         }
-        else if(Root.EndInstr instanceof ReturnInstr Ret) AddRegUsage(Ret.Rs);
+        else if(Root.EndInstr instanceof ReturnInstr){
+            ReturnInstr Ret = (ReturnInstr) Root.EndInstr;
+            AddRegUsage(Ret.Rs);
+        }
         for(IRBlock Son : Root.SubBlocks) CheckingRegUsage(Son);
     }
     void DeleteRedundant(IRBlock Root){
