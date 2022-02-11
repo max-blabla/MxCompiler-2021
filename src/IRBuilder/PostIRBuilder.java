@@ -126,7 +126,8 @@ public class PostIRBuilder {
         int size = Root.VarInstrList.size();
         for(int i = size - 1 ; i>= 0 ;i--){
             BaseInstr Instr = Root.VarInstrList.get(i);
-            if(Instr instanceof LoadInstr Load){
+            if(Instr instanceof LoadInstr){
+                LoadInstr Load = (LoadInstr) Instr;
                 if(IRRegUsed.get(Load.Rd) == 0) {
                     SubRegUsage(Load.RsPtr);
                     Root.VarInstrList.remove(i);
