@@ -47,8 +47,11 @@ public class PostASTBuilder {
 
     Tuple ConstSpread(BaseAST Root) {
         if (Root == null) return null;
-        if(! (Root instanceof ExprAST Expr))for (BaseAST Son : Root.GetSon()) ConstSpread(Son);
+        if(! (Root instanceof ExprAST)){
+            for (BaseAST Son : Root.GetSon()) ConstSpread(Son);
+        }
         else{
+            ExprAST Expr = (ExprAST) Root;
             ExprAST Left = Expr.getLeftSonExpr();
             ExprAST Right = Expr.getRightSonExpr();
             Tuple LTuple = ConstSpread(Left);
