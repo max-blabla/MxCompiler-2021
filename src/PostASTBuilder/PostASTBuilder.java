@@ -29,7 +29,8 @@ public class PostASTBuilder {
     public void ConstSpread(){ConstSpread(Program);}
     void ParRevise(BaseAST Root){
         if(Root == null) return;
-        if(Root instanceof ExprAST Expr){
+        if(Root instanceof ExprAST){
+            ExprAST Expr = (ExprAST) Root;
             ExprAST Left = Expr.getLeftSonExpr();
             ExprAST Right = Expr.getRightSonExpr();
             if(!(Left == null || Right == null)) {
