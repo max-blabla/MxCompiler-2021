@@ -78,33 +78,40 @@ public class PostIRBuilder {
     void CheckingRegUsage(IRBlock Root){
         if(Root == null) return;
         for(BaseInstr instr : Root.VarInstrList){
-            if(instr instanceof AllocaInstr Allo){
+            if(instr instanceof AllocaInstr){
+                AllocaInstr Allo = (AllocaInstr) instr;
                 AddRegUsage(Allo.Rd);
             }
-            else  if(instr instanceof FuncCallInstr Call){
+            else  if(instr instanceof FuncCallInstr){
+                FuncCallInstr Call = (FuncCallInstr) instr;
                 for(String Param : Call.Param) AddRegUsage(Param);
                 AddRegUsage(Call.Rd);
             }
-            else if(instr instanceof GetelementInstr Get){
+            else if(instr instanceof GetelementInstr ){
+                GetelementInstr Get = (GetelementInstr) instr;
                 AddRegUsage(Get.Ptr);
                 AddRegUsage(Get.Rd);
                 if(Objects.equals(Get.Mode, "index")) AddRegUsage(Get.Index);
             }
-            else if(instr instanceof LoadInstr Load){
+            else if(instr instanceof LoadInstr){
+                LoadInstr Load = (LoadInstr) instr;
                 AddRegUsage(Load.RsPtr);
                 AddRegUsage(Load.Rd);
             }
-            else if(instr instanceof OperationInstr Op){
+            else if(instr instanceof OperationInstr ){
+                OperationInstr Op = (OperationInstr) instr;
                 if(!Op.IsRsImm1) AddRegUsage(Op.Rs1);
                 if(!Op.IsRsImm2) AddRegUsage(Op.Rs2);
                 AddRegUsage(Op.Rd);
             }
-            else if(instr instanceof StoreInstr Store){
+            else if(instr instanceof StoreInstr){
+                StoreInstr Store = (StoreInstr) instr;
                 AddRegUsage(Store.Rs);
                 AddRegUsage(Store.Ptr);
             }
         }
-        if(Root.EndInstr instanceof BranchInstr Br){
+        if(Root.EndInstr instanceof BranchInstr){
+            BranchInstr Br = (BranchInstr) Root.EndInstr;
             if(!Objects.equals(Br.Condition, "")) AddRegUsage(Br.Condition);
         }
         else if(Root.EndInstr instanceof ReturnInstr Ret) AddRegUsage(Ret.Rs);
@@ -147,7 +154,8 @@ public class PostIRBuilder {
                 graphNode.TrueSuccessor = null;
                 graphNode.IsBranch = false;
             }
-            else if(graphNode.Block.EndInstr instanceof BranchInstr Branch){
+            else if(graphNode.Block.EndInstr instanceof BranchInstr){
+                BranchInstr Branch = (BranchInstr) graphNode.Block.EndInstr;
                 if(Objects.equals(Branch.Label2, "")){
                     graphNode.TrueSuccessor = NodeSearching.get(Branch.Label1);
                     NodeSearching.get(Branch.Label1).Predecessors.add(graphNode);

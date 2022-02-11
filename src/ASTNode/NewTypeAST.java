@@ -14,7 +14,8 @@ public class NewTypeAST extends ExprAST{
 
     @Override
     public void InsertSon(BaseAST Son) {
-        if(Son instanceof ExprAST NewSon){
+        if(Son instanceof ExprAST){
+            ExprAST NewSon = (ExprAST) Son;
             NewSon.Father = this;
             ExprList.add(NewSon);
         }

@@ -357,13 +357,15 @@ public class CodeGenerator {
         }
         for(BaseInstr Instr : InstrList){
             ++InstrLine;
-            if(Instr instanceof AllocaInstr NewIRAlloc){
+            if(Instr instanceof AllocaInstr){
+                AllocaInstr NewIRAlloc = (AllocaInstr) Instr;
                 StackBottom -= IRTypeToSize(NewIRAlloc.Type);
         //        StackTable.put(StackBottom, NewIRAlloc.Rd);
                 Address NewAddr = new Address("sp",StackBottom);
                 FuncVarPos.put(NewIRAlloc.Rd, NewAddr);
             }
-            else if(Instr instanceof LoadInstr NewIRLoad){
+            else if(Instr instanceof LoadInstr){
+                LoadInstr NewIRLoad = (LoadInstr) Instr;
                 String RegName = RegDistribute(NewIRLoad.Rd,FuncVarPos,"",NewBlockCode);
                 String Op;
                 int Offset;
@@ -395,7 +397,8 @@ public class CodeGenerator {
                  //   RegFree(Ptr);
                 }
             }
-            else if(Instr instanceof OperationInstr NewIROp){
+            else if(Instr instanceof OperationInstr ){
+                OperationInstr NewIROp= ( OperationInstr) Instr;
                 String Op;
 
                 if(NewIROp.IsRsImm1 || NewIROp.IsRsImm2) {
@@ -564,7 +567,8 @@ public class CodeGenerator {
                     }
                 }
             }
-            else if(Instr instanceof StoreInstr NewIRStore){
+            else if(Instr instanceof StoreInstr){
+                StoreInstr NewIRStore = (StoreInstr)  Instr;
                 String Op;
                 String Ptr;
                 String Rs;
@@ -633,7 +637,9 @@ public class CodeGenerator {
                 RegFree(Rs);
           //      RegFree(Ptr);
             }
-            else if(Instr instanceof GetelementInstr NewIRGet) {
+            else if(Instr instanceof GetelementInstr) {
+                GetelementInstr NewIRGet = (GetelementInstr)  Instr;
+
                 String Rs;
                 Integer RdSize = IRTypeToSize(NewIRGet.RdType);
                 if (NewIRGet.IsPtrGlobal) {
@@ -688,7 +694,8 @@ public class CodeGenerator {
                 RCode NewPtrAdd = new RCode("add", Rd,Rs,ImmRd,InstrLine);
                 NewBlockCode.CodeList.add(NewPtrAdd);
             }
-            else if(Instr instanceof BranchInstr NewIRBr){
+            else if(Instr instanceof BranchInstr){
+                BranchInstr NewIRBr = (BranchInstr)  Instr;
                 if(Objects.equals(NewIRBr.Condition, "")){
                     JCode NewJump = new JCode("j", NewIRBr.Label1,InstrLine);
                     NewBlockCode.CodeList.add(NewJump);
@@ -710,7 +717,9 @@ public class CodeGenerator {
                 //    RegFree(CondiRd);
                 }
             }
-            else if(Instr instanceof FuncCallInstr NewIRCall){
+            else if(Instr instanceof FuncCallInstr){
+                FuncCallInstr NewIRCall = (FuncCallInstr)  Instr;
+
                 List<String> CallParams = NewIRCall.Param;
                 List<IRValue> FuncParams =  FindFunc(NewIRCall.FuncName).getParamList();
                 HashMap<String, Integer> FuncParam = AllFuncParams.get(NewIRCall.FuncName);
@@ -760,14 +769,16 @@ public class CodeGenerator {
                 }
            //     TempOutStack(InStackTemp,FuncVarPos,NewBlockCode);
             }
-            else if(Instr instanceof PhiInstr NewIRPhi){
+            else if(Instr instanceof PhiInstr ){
+                PhiInstr NewIRPhi = ( PhiInstr)  Instr;
                 if(Objects.equals(NewIRPhi.Mode, "start")) RegDistribute(NewIRPhi.Rd,FuncVarPos,"",NewBlockCode);
                 else{
                      //   RegDistable(RegTable.get(FuncVarPos.get(NewIRPhi.Rd)).RegName);
                 }
             }
-            else if(Instr instanceof ReturnInstr NewIRRet){
+            else if(Instr instanceof ReturnInstr){
                 //和call一样，需要交流
+                ReturnInstr NewIRRet= ( ReturnInstr)  Instr;
                 if(Objects.equals(NewIRRet.Type, "void")) break;
                 String Rs;
                 Address Pos = FuncVarPos.get(NewIRRet.Rs);

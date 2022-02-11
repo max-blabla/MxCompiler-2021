@@ -6,7 +6,7 @@ import java.io.IOException;
 public class AllocaInstr extends BaseInstr{
     public String Rd;
     public String Type;
-    AllocaInstr(String rd, String type){
+    public AllocaInstr(String rd, String type){
         super(InstrType.Alloca);
         Rd = rd;
         Type = type;
