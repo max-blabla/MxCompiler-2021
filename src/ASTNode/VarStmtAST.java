@@ -1,4 +1,5 @@
 package ASTNode;
+import java.util.ArrayList;
 import java.util.List;
 public class VarStmtAST extends StmtAST{
     VarDeclAST VarDecl;
@@ -15,5 +16,10 @@ public class VarStmtAST extends StmtAST{
 
     public List<VarDeclareAST> getVarDeclList(){
         return VarDecl.getVarDeclareList();
+    }
+    public List<BaseAST> GetSon(){
+        List<BaseAST> SonList = new ArrayList<>();
+        SonList.add(VarDecl);
+        return SonList;
     }
 }

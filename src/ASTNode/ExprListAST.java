@@ -22,4 +22,7 @@ public class ExprListAST extends ExprAST{
     public List<ExprAST> getExprList(){
         return ExprList;
     }
+    public List<BaseAST> GetSon(){
+        return new ArrayList<>(ExprList);
+    }
 }

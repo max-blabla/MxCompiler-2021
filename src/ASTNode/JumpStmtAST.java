@@ -1,4 +1,8 @@
 package ASTNode;
+
+import java.util.ArrayList;
+import java.util.List;
+
 public class JumpStmtAST extends StmtAST{
     Boolean IsBreak;
     public JumpStmtAST(Boolean isBreak){
@@ -12,5 +16,10 @@ public class JumpStmtAST extends StmtAST{
 
     public Boolean isBreak(){
         return IsBreak;
+    }
+    public List<BaseAST> GetSon(){
+        List<BaseAST> SonList = new ArrayList<>();
+        SonList.add(null);
+        return SonList;
     }
 };

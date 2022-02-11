@@ -3,6 +3,9 @@ package ASTNode;
 import ASTNode.ExprAST;
 import ASTNode.StmtAST;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class ForStmtAST extends StmtAST {
     ConditionAST ConditionExpr;
     ForInitAST InitExpr;
@@ -44,7 +47,8 @@ public class ForStmtAST extends StmtAST {
     }
 
     public ExprAST getConditionExpr(){
-        return ConditionExpr.Expr;
+        if(ConditionExpr == null) return null;
+        else return ConditionExpr.Expr;
     }
 
     public ExprAST getIncrExpr(){
@@ -54,5 +58,12 @@ public class ForStmtAST extends StmtAST {
     public StmtAST getLoopStmt(){
         return LoopStmt;
     }
-
+    public List<BaseAST> GetSon(){
+        List<BaseAST> SonList = new ArrayList<>();
+        SonList.add(InitExpr);
+        SonList.add(ConditionExpr);
+        SonList.add(IncrExpr);
+        SonList.add(LoopStmt);
+        return SonList;
+    }
 };

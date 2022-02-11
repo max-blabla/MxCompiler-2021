@@ -1,6 +1,7 @@
 
 package ASTNode;
 
+import javax.swing.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -25,5 +26,12 @@ public class ClassDeclAST extends DeclAST{
 
     public String getClassName(){
         return ClassName.Label;
+    }
+    public List<DeclAST> getDeclList(){return DeclList;}
+    public List<BaseAST> GetSon(){
+        List<BaseAST> SonList = new ArrayList<>();
+        SonList.add(ClassName);
+        SonList.addAll(DeclList);
+        return SonList;
     }
 }

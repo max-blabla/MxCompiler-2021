@@ -1,5 +1,8 @@
 package ASTNode;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class ConditionAST extends BaseAST{
     ExprAST Expr;
 
@@ -10,5 +13,10 @@ public class ConditionAST extends BaseAST{
             Son.Father = this;
         }
         else new BuildError("ConditionAST","InsertSon","");
+    }
+    public List<BaseAST> GetSon(){
+        List<BaseAST> SonList = new ArrayList<>();
+        SonList.add(Expr);
+        return SonList;
     }
 }

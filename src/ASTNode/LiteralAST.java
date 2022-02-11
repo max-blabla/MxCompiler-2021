@@ -10,6 +10,8 @@ public class LiteralAST extends ExprAST{
         Context = context;
     }
 
+    public String getContext(){return Context;}
+    public String getLiteralType(){return Type;}
     @Override
     public void InsertSon(BaseAST Son) {
         new BuildError("LiteralAST","InsertSon","");

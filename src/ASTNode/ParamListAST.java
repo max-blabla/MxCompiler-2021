@@ -14,4 +14,7 @@ public class ParamListAST extends BaseAST{
         }
         else  new BuildError("ParamListAST","InsertSon","");
     }
+    public List<BaseAST> GetSon(){
+        return new ArrayList<>(ParamTypeList);
+    }
 }

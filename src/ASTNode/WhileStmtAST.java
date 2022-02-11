@@ -2,6 +2,9 @@ package ASTNode;
 
 import org.antlr.v4.codegen.model.Loop;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class WhileStmtAST extends  StmtAST{
     ConditionAST ConditionExpr;
     StmtAST LoopStmt;
@@ -26,5 +29,12 @@ public class WhileStmtAST extends  StmtAST{
 
     public StmtAST getLoopStmt(){
         return LoopStmt;
+    }
+    public List<BaseAST> GetSon(){
+        List<BaseAST> SonList = new ArrayList<>();
+        SonList.add(ConditionExpr);
+        SonList.add(LoopStmt);
+
+        return SonList;
     }
 };

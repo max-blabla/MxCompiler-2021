@@ -16,4 +16,7 @@ public class GlobalAST extends DeclAST{
         }
         else new BuildError("GlobalAST","InsertSon","");
     }
+    public List<BaseAST> GetSon(){
+        return new ArrayList<>(DeclList);
+    }
 }

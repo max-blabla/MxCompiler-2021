@@ -31,4 +31,10 @@ public class VarDeclAST extends DeclAST{
     public String getType(){
         return VarType.Type;
     }
+    public List<BaseAST> GetSon(){
+        List<BaseAST> SonList = new ArrayList<>();
+        SonList.add(VarType);
+        SonList.addAll(DeclareList);
+        return SonList;
+    }
 }

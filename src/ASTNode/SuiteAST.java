@@ -21,4 +21,7 @@ public class SuiteAST extends StmtAST{
     public List<StmtAST> getStmtList(){
         return StmtList;
     }
+    public List<BaseAST> GetSon(){
+        return new ArrayList<>(StmtList);
+    }
 };

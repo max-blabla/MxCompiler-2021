@@ -3,5 +3,6 @@ public enum BlockType{
     Condition,
     TrueStmt,
     FalseStmt,
-    Basic
+    Basic,
+    Body
 }

@@ -1,13 +1,19 @@
 package IRBuilder;
 
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.Objects;
+
 public class OperationInstr extends BaseInstr{
-    String Mode;
-    String Op;
-    String Rs1;
-    String Rs2;
-    String Rd;
+    public String Mode;
+    public String Op;
+    public String Rs1;
+    public String Rs2;
+    public String Rd;
     String Type1;
     String Type2;
+    public Boolean IsRsImm1;
+    public Boolean IsRsImm2;
     OperationInstr(String op, String rs1, String rs2, String type1 , String type2, String rd, String mode){
         super(InstrType.Operation);
         Op = op;
@@ -17,5 +23,18 @@ public class OperationInstr extends BaseInstr{
         Type1 = type1;
         Type2 = type2;
         Mode = mode;
+        IsRsImm1 ='0' <= rs1.charAt(0) && rs1.charAt(0) <= '9' || rs1.equals("true") ||rs1.equals("false") || rs1.charAt(0) == '-';
+        IsRsImm2 ='0' <= rs2.charAt(0) && rs2.charAt(0) <= '9'|| rs2.equals("true") || rs2.equals("false") || rs2.charAt(0) == '-';
+    }
+
+    @Override
+    public void Output(FileWriter Writer) throws IOException {
+        Writer.write("%"+Rd + " = "+ Op );
+        if(!Objects.equals(Mode, ""))  Writer.write( " " + Mode );
+        Writer.write(", " + Type1 +" ");
+        if(!IsRsImm1) Writer.write("%");
+        Writer.write(Rs1 + ", " + Type2 + " ");
+        if(!IsRsImm2) Writer.write("%");
+        Writer.write(Rs2 + '\n');
     }
 }

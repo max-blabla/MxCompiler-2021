@@ -1,8 +1,9 @@
 package IRBuilder;
 
-import java.util.HashSet;
-import java.util.HashMap;
-import java.util.List;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.*;
+import java.util.Map.Entry;
 
 
 public class IRModule{
@@ -10,6 +11,12 @@ public class IRModule{
     HashMap<String, IRValue> VarTable;
     List<IRFunc> FuncSet;
     Boolean IsUsed;
+    Integer Size;
+    public IRModule(){
+        VarTable = new HashMap<>();
+        FuncSet = new ArrayList<>();
+        Size = 0 ;
+    }
     public void VarInsert(IRValue varPair){
         VarTable.put(varPair.Name, varPair);
     }
@@ -19,9 +26,41 @@ public class IRModule{
     public void setName(String name){
         Name = name;
     }
-    public IRFunc getTopFunc(){ return FuncSet.get(FuncSet.size() - 1);}
     public String getName(){return Name;}
     public List<IRFunc> getFuncSet(){return FuncSet;}
     public HashMap<String,IRValue> getVarTable(){return VarTable;}
+    public IRFunc FindFunc(String FuncName){
+        for(IRFunc Func:FuncSet) if(Objects.equals(Func.FuncName, FuncName)) return Func;
+        return null;
+    }
+    public IRValue FindValue(String FuncName){
+        return VarTable.getOrDefault(FuncName, null);
+    }
+    public void Output(FileWriter Writer) throws IOException {
+        if(Objects.equals(this.Name, "_global")){
+            for(Entry<String,IRValue> entry: VarTable.entrySet()) {
+                Writer.write("@" + entry.getKey() + " = global ");
+                if(Objects.equals(entry.getValue().Asciz, "")) Writer.write("zeroinitializer\n");
+                else Writer.write("["+entry.getValue().Asciz.length()+",\""+entry.getValue().Asciz+"\"]\n");
+            }
+            for(IRFunc func : FuncSet) func.Output(Writer);
+        }
+        else{
+            if(!Objects.equals(this.Name, "_string")) {
+                Writer.write("%" + "struct." + this.Name + " = type { ");
+                boolean IsStart = false;
+                for (Entry<String, IRValue> entry : VarTable.entrySet()) {
+                    if (!IsStart) IsStart = true;
+                    else Writer.write(", ");
+                    Writer.write(entry.getValue().Type);
+                }
+                Writer.write(" }\n");
+            }
+            for(IRFunc func : FuncSet) func.Output(Writer);
+        }
+    }
 
+    public Integer getSize() {
+        return Size;
+    }
 }

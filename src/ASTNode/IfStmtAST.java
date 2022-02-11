@@ -1,4 +1,8 @@
 package ASTNode;
+
+import java.util.ArrayList;
+import java.util.List;
+
 public class IfStmtAST extends StmtAST{
     ConditionAST ConditionExpr;
     StmtAST FalseStmt;
@@ -38,5 +42,13 @@ public class IfStmtAST extends StmtAST{
 
     public StmtAST getFalseStmt(){
         return FalseStmt;
+    }
+    public List<BaseAST> GetSon(){
+        List<BaseAST> SonList = new ArrayList<>();
+        SonList.add(ConditionExpr);
+        SonList.add(FalseStmt);
+        SonList.add(TrueStmt);
+
+        return SonList;
     }
 };

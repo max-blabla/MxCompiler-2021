@@ -2,6 +2,7 @@ package ASTNode;
 
 import MxParser.MxParser;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class FuncDeclAST extends DeclAST{
@@ -46,4 +47,12 @@ public class FuncDeclAST extends DeclAST{
     }
 
     public List<VarDeclAST> getParamList(){return ParamList.ParamTypeList;}
+    public List<BaseAST> GetSon(){
+        List<BaseAST> SonList = new ArrayList<>();
+        SonList.add(RetType);
+        SonList.add(ParamList);
+        SonList.add(FuncName);
+        SonList.add(FuncSuite);
+        return SonList;
+    }
 };

@@ -1,5 +1,8 @@
 package ASTNode;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class LambdaExprAST extends BaseAST{
     ParamListAST ParamList;
     SuiteAST FuncSuite;
@@ -25,5 +28,13 @@ public class LambdaExprAST extends BaseAST{
             ExprList.Father = this;
         }
         else new BuildError("LambdaExpr","InsertSon","");
+    }
+    public List<BaseAST> GetSon(){
+        List<BaseAST> SonList = new ArrayList<>();
+        SonList.add(ParamList);
+        SonList.add(FuncSuite);
+        SonList.add(ExprList);
+
+        return SonList;
     }
 }

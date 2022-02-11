@@ -1,5 +1,8 @@
 package ASTNode;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class VarDeclareAST extends BaseAST{
     IdAST Id;
     ExprAST Expr;//可以为Null
@@ -25,7 +28,26 @@ public class VarDeclareAST extends BaseAST{
         return Id.Label;
     }
 
+    public ExprAST getAssignExpr(){
+        if(Expr != null) {
+            ExprAST AssignExpr = new ExprAST(ExprType.Assign);
+            AssignExpr.LeftSonExpr = new LabelAST(Id.Label);
+            AssignExpr.RightSonExpr = Expr;
+            AssignExpr.LeftSonExpr.Father = AssignExpr;
+            AssignExpr.RightSonExpr.Father = AssignExpr;
+            return  AssignExpr;
+        }
+        else return null;
+
+    }
+
     public ExprAST getExpr(){
         return  Expr;
+    }
+    public List<BaseAST> GetSon(){
+        List<BaseAST> SonList = new ArrayList<>();
+        SonList.add(Id);
+        SonList.add(Expr);
+        return SonList;
     }
 }

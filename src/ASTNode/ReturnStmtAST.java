@@ -1,4 +1,8 @@
 package ASTNode;
+
+import java.util.ArrayList;
+import java.util.List;
+
 public class ReturnStmtAST extends StmtAST{
     ExprAST ReturnExpr;
     public ReturnStmtAST(){
@@ -16,5 +20,10 @@ public class ReturnStmtAST extends StmtAST{
 
     public ExprAST getExpr(){
         return ReturnExpr;
+    }
+    public List<BaseAST> GetSon(){
+        List<BaseAST> SonList = new ArrayList<>();
+        SonList.add(ReturnExpr);
+        return SonList;
     }
 };

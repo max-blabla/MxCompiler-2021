@@ -26,6 +26,10 @@ public class ASTBuilder extends MxBaseListener{
         FuncDeclAST NewDef = new FuncDeclAST();
         CurASTNode.InsertSon(NewDef);
         CurASTNode = NewDef;
+        if(ctx.returnType() == null){
+            TypeAST NewType = new TypeAST("void");
+            CurASTNode.InsertSon(NewType);
+        }
     }
 
     @Override
@@ -253,6 +257,17 @@ public class ASTBuilder extends MxBaseListener{
     @Override
     public void exitLambdaExpression(MxParser.LambdaExpressionContext ctx) { CurASTNode = CurASTNode.Father; }
 
+
+    @Override
+    public void enterReturnType(MxParser.ReturnTypeContext ctx) {
+        TypeAST NewType = new TypeAST(ctx.getText());
+        CurASTNode.InsertSon(NewType);
+        CurASTNode = NewType;
+    }
+
+    @Override
+    public void exitReturnType(MxParser.ReturnTypeContext ctx) {CurASTNode = CurASTNode.Father;}
+
     @Override
     public void enterType(MxParser.TypeContext ctx) {
         TypeAST NewType = new TypeAST(ctx.getText());
@@ -265,8 +280,8 @@ public class ASTBuilder extends MxBaseListener{
     public void enterLiteral(MxParser.LiteralContext ctx) {
         String Context  = ctx.getText();
         String LiteralType;
-        if(Objects.equals(Context, "True") || Objects.equals(Context, "False")) LiteralType = "bool";
-        else if(Objects.equals(Context, "Null")) LiteralType = "auto";
+        if(Objects.equals(Context, "true") || Objects.equals(Context, "false")) LiteralType = "bool";
+        else if(Objects.equals(Context, "null")) LiteralType = "auto";
         else if(Context.charAt(0)<='9' && Context.charAt(0) >= '0') LiteralType = "int";
         else LiteralType = "string";
         LiteralAST NewLiteral = new LiteralAST(LiteralType,Context);
@@ -278,7 +293,7 @@ public class ASTBuilder extends MxBaseListener{
     @Override
     public void enterLabel(MxParser.LabelContext ctx) {
         String LabelName = ctx.getText();
-        IdAST NewLabel = new IdAST(LabelName);
+        LabelAST NewLabel = new LabelAST(LabelName);
         CurASTNode.InsertSon(NewLabel);
         CurASTNode = NewLabel;
     }
@@ -287,9 +302,9 @@ public class ASTBuilder extends MxBaseListener{
 
     @Override
     public void enterParenthes(MxParser.ParenthesContext ctx){
-        ParAST NewLabel = new ParAST();
-        CurASTNode.InsertSon(NewLabel);
-        CurASTNode = NewLabel;
+        ParAST NewPar = new ParAST();
+        CurASTNode.InsertSon(NewPar);
+        CurASTNode = NewPar;
     }
 
     @Override
