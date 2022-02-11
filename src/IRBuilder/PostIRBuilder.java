@@ -132,7 +132,8 @@ public class PostIRBuilder {
                     Root.VarInstrList.remove(i);
                 }
             }
-            else if(Instr instanceof GetelementInstr Get) {
+            else if(Instr instanceof GetelementInstr) {
+                GetelementInstr Get = (GetelementInstr) Instr;
                 if (IRRegUsed.get(Get.Rd) == 0) {
                     SubRegUsage(Get.Ptr);
                     if (Objects.equals(Get.Mode, "index")) SubRegUsage(Get.Index);
