@@ -1,0 +1,16 @@
+@ss = global i32 zeroinitializer
+
+define i32 @main(){
+Start1:
+	%main.1 = alloca i32
+	%main.2 = alloca i32
+	%main.3 = load i32, %i32* main.2
+	%main.4 = add , i32 1, i32 1
+	store i32 %main.4, i32* %main.2
+	%main.5 = alloca i1
+Param2:
+	call void @_global._init()
+}
+
+define i32 @_global._init(){
+}
