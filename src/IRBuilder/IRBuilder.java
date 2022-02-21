@@ -1096,14 +1096,16 @@ public class IRBuilder {
             String FuncName = Left.Name.substring(Index+1);
             boolean IsSize = false;
                 if (Index == -1) {
-                    if (FindFunc(CurModule, FuncName) != null) {
+                    if (CurModule.FindFunc(FuncName) != null) {
                         TargetModule = CurModule;
-                        ParamTypes.add(TargetModule.Name);
-                        String Ptr = FindPtr(CurBlock,"this",CurModule);
-                        String PtrRd = Func.NewReg();
-                        LoadInstr GetClass = new LoadInstr("load",PtrRd,TargetModule.Name,Ptr,TargetModule.Name+"*",false);
-                        ParamNames.add(PtrRd);
-                        CurBlock.InsertInstr(GetClass);
+                        if(CurModule != GlobalModule) {
+                            ParamTypes.add(TargetModule.Name);
+                            String Ptr = FindPtr(CurBlock, "this", CurModule);
+                            String PtrRd = Func.NewReg();
+                            LoadInstr GetClass = new LoadInstr("load", PtrRd, TargetModule.Name, Ptr, TargetModule.Name + "*", false);
+                            ParamNames.add(PtrRd);
+                            CurBlock.InsertInstr(GetClass);
+                        }
                     }
                     else TargetModule = GlobalModule;
                 } else {
