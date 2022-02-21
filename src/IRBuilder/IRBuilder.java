@@ -1,25 +1,12 @@
 package IRBuilder;
 
 import ASTNode.*;
-//import com.sun.jdi.Value;
-//import com.sun.org.apache.xpath.internal.operations.Mod;
-//import sun.jvm.hotspot.opto.Block;
-
-
-import java.lang.reflect.Type;
-import java.net.Proxy;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Objects;
-
-import java.util.List;
-import java.util.concurrent.Callable;
-
+import java.util.*;
 //TODO  New Builtin
-public class IRBuilder{
+public class IRBuilder {
     GlobalAST Program;
     List<IRModule> ModuleList;
-    HashMap<String,IRFunc> LinkingFunc;
+    HashMap<String, IRFunc> LinkingFunc;
     Boolean IsCollect;
     Integer BlockNum;
     IRFunc CurFunc;
@@ -28,7 +15,8 @@ public class IRBuilder{
     IRModule GlobalModule;
     IRFunc Init;
     IRFunc Main;
-    public IRBuilder(GlobalAST program){
+
+    public IRBuilder(GlobalAST program) {
         Program = program;
         ModuleList = new ArrayList<>();
         BlockNum = 0;
@@ -40,10 +28,12 @@ public class IRBuilder{
         Main = null;
         IsCollect = false;
     }
-    public List<IRModule> GetModuleList(){
+
+    public List<IRModule> GetModuleList() {
         return ModuleList;
     }
-    public void ProgramIR(){
+
+    public void ProgramIR() {
         //TODO 内建函数和内建类 √
         ModuleList = new ArrayList<>();
 
@@ -53,296 +43,279 @@ public class IRBuilder{
         GlobalModule.setName("_global");
         ModuleList.add(GlobalModule);
         LinkingSet();
-        BuiltinSet();
 
-        Init  = new IRFunc();
+        Init = new IRFunc();
         Init.FuncName = "_global._init";
         Init.RetType = "void";
         Init.IsUsed = true;
 
-        Init.Start = new IRBlock(BlockType.Basic,"Start",BlockNum++);
-        Init.End = new IRBlock(BlockType.Basic,"End",BlockNum++);
-        ReturnInstr NewReturn = new ReturnInstr("ret","void","");
-        Init.Start.EndInstr = new BranchInstr("br",Init.End.Label,"","");
+        Init.Start = new IRBlock(BlockType.Basic, "Start", BlockNum++);
+        Init.End = new IRBlock(BlockType.Basic, "End", BlockNum++);
+        ReturnInstr NewReturn = new ReturnInstr("ret", "void", "");
+        Init.Start.EndInstr = new BranchInstr("br", Init.End.Label, "", "");
         Init.End.EndInstr = NewReturn;
         Init.ModuleName = "_global";
         CurFunc = null;
         CurModule = GlobalModule;
-        for(DeclAST Decl:Program.DeclList) DeclIR(Decl);
+        for (DeclAST Decl : Program.DeclList) DeclIR(Decl);
         CurModule = GlobalModule;
         IsCollect = true;
-        for(DeclAST Decl:Program.DeclList) DeclIR(Decl);
+        for (DeclAST Decl : Program.DeclList) DeclIR(Decl);
 
         GlobalModule.FuncInsert(Init);
     }
 
-    void LinkingSet(){
+    void LinkingSet() {
         IRModule StringModule = new IRModule();
         StringModule.Name = "_string";
         StringModule.Size = 32;
         StringModule.IsUsed = true;
-        for(int i = 0 ; i < 15 ;i++){
+        for (int i = 0; i < 15; i++) {
             IRFunc NewLinking = new IRFunc();
             NewLinking.IsLinked = true;
-            switch (i){
-                case 0 ->{
+            switch (i) {
+                case 0 -> {
                     NewLinking.FuncName = "malloc";
                     NewLinking.RetType = TypeToIRType("int[]");
                     IRValue Size = new IRValue();
                     Size.Name = "size";
                     Size.Type = TypeToIRType("int");
-                    NewLinking.PutParam(Size.Name,Size);
+                    NewLinking.PutParam(Size.Name, Size);
                 }
-                case 1->{
-                    NewLinking.FuncName  = "println";
+                case 1 -> {
+                    NewLinking.FuncName = "println";
                     NewLinking.RetType = TypeToIRType("void");
                     IRValue Out = new IRValue();
                     Out.Name = "out";
-                    Out.Type = TypeToIRType("string[]");
-                    NewLinking.PutParam(Out.Name,Out);
+                    Out.Type = TypeToIRType("string");
+                    NewLinking.PutParam(Out.Name, Out);
                 }
-                case 2 ->{
-                    NewLinking.FuncName  = "print";
+                case 2 -> {
+                    NewLinking.FuncName = "print";
                     NewLinking.RetType = TypeToIRType("void");
                     IRValue Out = new IRValue();
                     Out.Name = "out";
-                    Out.Type = TypeToIRType("string[]");
-                    NewLinking.PutParam(Out.Name,Out);
+                    Out.Type = TypeToIRType("string");
+                    NewLinking.PutParam(Out.Name, Out);
                 }
-                case 3->{
-                    NewLinking.FuncName  = "toString";
-                    NewLinking.RetType = TypeToIRType("string[]");
+                case 3 -> {
+                    NewLinking.FuncName = "toString";
+                    NewLinking.RetType = TypeToIRType("string");
                     IRValue Num = new IRValue();
                     Num.Name = "num";
                     Num.Type = TypeToIRType("int");
-                    NewLinking.PutParam(Num.Name,Num);
+                    NewLinking.PutParam(Num.Name, Num);
                 }
-                case 4->{
-                    NewLinking.FuncName  = "printInt";
+                case 4 -> {
+                    NewLinking.FuncName = "printInt";
                     NewLinking.RetType = TypeToIRType("void");
                     IRValue Out = new IRValue();
                     Out.Name = "out";
                     Out.Type = TypeToIRType("int");
-                    NewLinking.PutParam(Out.Name,Out);
+                    NewLinking.PutParam(Out.Name, Out);
                 }
-                case 5 ->{
-                    NewLinking.FuncName  = "printlnInt";
+                case 5 -> {
+                    NewLinking.FuncName = "printlnInt";
                     NewLinking.RetType = TypeToIRType("void");
                     IRValue Out = new IRValue();
                     Out.Name = "out";
                     Out.Type = TypeToIRType("int");
-                    NewLinking.PutParam(Out.Name,Out);
+                    NewLinking.PutParam(Out.Name, Out);
                 }
-                case 6 ->{
-                    NewLinking.FuncName  = "getString";
-                    NewLinking.RetType = TypeToIRType("string[]");
+                case 6 -> {
+                    NewLinking.FuncName = "getString";
+                    NewLinking.RetType = TypeToIRType("string");
                 }
-                case 7 ->{
-                    NewLinking.FuncName  = "getInt";
+                case 7 -> {
+                    NewLinking.FuncName = "getInt";
                     NewLinking.RetType = TypeToIRType("int");
                 }
-                case 8->{
-                    NewLinking.FuncName  = "strcopy";
-                    NewLinking.RetType = TypeToIRType("string[]");
+                case 8 -> {
+                    NewLinking.FuncName = "strcopy";
+                    NewLinking.RetType = TypeToIRType("string");
                     IRValue Dst = new IRValue();
                     Dst.Name = "dst";
-                    Dst.Type = TypeToIRType("string[]");
-                    NewLinking.PutParam(Dst.Name,Dst);
-                    IRValue Src = new IRValue();
-                    Src.Name = "src";
-                    Src.Type = TypeToIRType("string[]");
-                    NewLinking.PutParam(Src.Name,Src);
+                    Dst.Type = TypeToIRType("string");
+                    NewLinking.PutParam(Dst.Name, Dst);
                 }
 
-                case 9 ->{
-                    NewLinking.FuncName  ="append";
+                case 9 -> {
+                    NewLinking.FuncName = "append";
                     NewLinking.RetType = TypeToIRType("void");
                     IRValue Dst = new IRValue();
                     Dst.Name = "dst";
-                    Dst.Type = TypeToIRType("string[]");
-                    NewLinking.PutParam(Dst.Name,Dst);
+                    Dst.Type = TypeToIRType("string");
+                    NewLinking.PutParam(Dst.Name, Dst);
                     IRValue Src = new IRValue();
                     Src.Name = "src";
-                    Src.Type = TypeToIRType("string[]");
-                    NewLinking.PutParam(Src.Name,Src);
+                    Src.Type = TypeToIRType("string");
+                    NewLinking.PutParam(Src.Name, Src);
                 }
-                case 10 ->{
+                case 10 -> {
                     NewLinking.ModuleName = "_string";
-                    NewLinking.FuncName  ="_string.length";
+                    NewLinking.FuncName = "_string.length";
                     NewLinking.RetType = TypeToIRType("int");
                     IRValue Str = new IRValue();
                     Str.Name = "this";
-                    Str.Type = TypeToIRType("string[]");
-                    NewLinking.PutParam(Str.Name,Str);
+                    Str.Type = TypeToIRType("string");
+                    NewLinking.PutParam(Str.Name, Str);
                     StringModule.FuncInsert(NewLinking);
                 }
-                case 11->{
+                case 11 -> {
                     NewLinking.ModuleName = "_string";
-                    NewLinking.FuncName  ="_string.substring";
-                    NewLinking.RetType = TypeToIRType("string[]");
+                    NewLinking.FuncName = "_string.substring";
+                    NewLinking.RetType = TypeToIRType("string");
                     IRValue Str = new IRValue();
                     Str.Name = "this";
-                    Str.Type = TypeToIRType("string[]");
-                    NewLinking.PutParam(Str.Name,Str);
+                    Str.Type = TypeToIRType("string");
+                    NewLinking.PutParam(Str.Name, Str);
                     IRValue L = new IRValue();
                     L.Name = "l";
                     L.Type = TypeToIRType("int");
-                    NewLinking.PutParam(L.Name,L);
+                    NewLinking.PutParam(L.Name, L);
                     IRValue R = new IRValue();
                     R.Name = "r";
                     R.Type = TypeToIRType("int");
-                    NewLinking.PutParam(R.Name,R);
+                    NewLinking.PutParam(R.Name, R);
 
                     StringModule.FuncInsert(NewLinking);
                 }
-                case 12->{
+                case 12 -> {
                     NewLinking.ModuleName = "_string";
-                    NewLinking.FuncName  ="_string.parseInt";
+                    NewLinking.FuncName = "_string.parseInt";
                     NewLinking.RetType = TypeToIRType("int");
                     IRValue Str = new IRValue();
                     Str.Name = "this";
-                    Str.Type = TypeToIRType("string[]");
-                    NewLinking.PutParam(Str.Name,Str);
+                    Str.Type = TypeToIRType("string");
+                    NewLinking.PutParam(Str.Name, Str);
                     StringModule.FuncInsert(NewLinking);
                 }
-                case 13->{
+                case 13 -> {
                     NewLinking.ModuleName = "_string";
-                    NewLinking.FuncName  ="_string.ord";
+                    NewLinking.FuncName = "_string.ord";
                     NewLinking.RetType = TypeToIRType("int");
 
                     IRValue Str = new IRValue();
                     Str.Name = "this";
-                    Str.Type = TypeToIRType("string[]");
-                    NewLinking.PutParam(Str.Name,Str);
+                    Str.Type = TypeToIRType("string");
+                    NewLinking.PutParam(Str.Name, Str);
                     StringModule.FuncInsert(NewLinking);
                     IRValue Index = new IRValue();
                     Index.Name = "index";
                     Index.Type = TypeToIRType("int");
-                    NewLinking.PutParam(Index.Name,Index);
+                    NewLinking.PutParam(Index.Name, Index);
                 }
-                case 14->{
-                    NewLinking.FuncName  = "strcomp";
+                case 14 -> {
+                    NewLinking.FuncName = "strcomp";
                     NewLinking.RetType = TypeToIRType("int");
                     IRValue Dst = new IRValue();
                     Dst.Name = "dst";
-                    Dst.Type = TypeToIRType("string[]");
-                    NewLinking.PutParam(Dst.Name,Dst);
+                    Dst.Type = TypeToIRType("string");
+                    NewLinking.PutParam(Dst.Name, Dst);
                     IRValue Src = new IRValue();
                     Src.Name = "src";
-                    Src.Type = TypeToIRType("string[]");
-                    NewLinking.PutParam(Src.Name,Src);
+                    Src.Type = TypeToIRType("string");
+                    NewLinking.PutParam(Src.Name, Src);
                 }
             }
-            LinkingFunc.put(NewLinking.FuncName,NewLinking);
+            LinkingFunc.put(NewLinking.FuncName, NewLinking);
             AddLinking(NewLinking.FuncName);
         }
         ModuleList.add(StringModule);
 
     }
 
-    void AddLinking(String LinkName){
+    void AddLinking(String LinkName) {
         IRFunc Func = LinkingFunc.get(LinkName);
-        if(Func != null && !Func.IsUsed){
-            GlobalModule.FuncSet.add( Func);
+        if (Func != null && !Func.IsUsed) {
+            GlobalModule.FuncSet.add(Func);
             Func.IsUsed = true;
         }
     }
 
-
-
-    void BuiltinSet(){
+    void DeclIR(DeclAST DeclNode) {
+        if (DeclNode instanceof VarDeclAST) VarDeclIR(DeclNode);
+        else if (DeclNode instanceof FuncDeclAST) FuncDeclIR(DeclNode);
+        else ClassDeclIR(DeclNode);
     }
 
-    void DeclIR(DeclAST DeclNode){
-        if(DeclNode instanceof VarDeclAST)  VarDeclIR(DeclNode);
-        else if(DeclNode instanceof FuncDeclAST) FuncDeclIR(DeclNode);
-        else  ClassDeclIR(DeclNode);
-    }
+    String TypeToIRType(String Type) {
 
-    String TypeToIRType(String Type){
-
-        if(Objects.equals(Type, "int")) return "i32";
-        else if(Objects.equals(Type, "void")) return "void";
-        else if(Objects.equals(Type, "bool")) return "i8";
-        else{
+        if (Objects.equals(Type, "int")) return "i32";
+        else if (Objects.equals(Type, "void")) return "void";
+        else if (Objects.equals(Type, "bool")) return "i8";
+        else {
             int Demension = 0;
 
-          //  else Demension = 0;
             String MainType;
-            if(Type.indexOf('[') != -1){
-                MainType = Type.substring(0,Type.indexOf('['));
-                Demension = (Type.lastIndexOf('[')-Type.indexOf('['))/2+1;
+            if (Type.indexOf('[') != -1) {
+                MainType = Type.substring(0, Type.indexOf('['));
+                Demension = (Type.lastIndexOf('[') - Type.indexOf('[')) / 2 + 1;
 
-            }
-            else {
+            } else {
                 MainType = Type;
             }
             String RetMain;
-            if(MainType.equals("int")) RetMain = "i32";
-            else if(MainType.equals("bool")) RetMain = "i8";
-            else if(MainType.equals("string")) RetMain = "_string*";
+            if (MainType.equals("int")) RetMain = "i32";
+            else if (MainType.equals("bool")) RetMain = "i8";
+            else if (MainType.equals("string")) RetMain = "_string";
             else {
-                if(MainType.charAt(0) == '_') RetMain = MainType+"*";
-                else RetMain = "_" + MainType+"*";
+                if (MainType.charAt(0) == '_') RetMain = MainType;
+                else RetMain = "_" + MainType;
             }
-            return RetMain+ "*".repeat(Demension);
+            return RetMain + "*".repeat(Demension);
         }
     }
 
-    Integer TypeSize(String Type){
-        if(Objects.equals(Type, "i32")) return 32;
-        else if(Objects.equals(Type, "i8"))return 8;
-        else if(Type.contains("*")) return 32;
-        else{
-            for(IRModule module: ModuleList) if(Objects.equals(module.Name, Type)) return module.Size;
+    Integer TypeSize(String Type) {
+        if (Objects.equals(Type, "i32")) return 32;
+        else if (Objects.equals(Type, "i8")) return 8;
+        else if (Type.contains("*")) return 32;
+        else {
+            for (IRModule module : ModuleList) if (Objects.equals(module.Name, Type)) return module.Size;
             return -1;
         }
     }
 
-    //
-    void VarDeclIR(DeclAST VarDeclNode){
+    void VarDeclIR(DeclAST VarDeclNode) {
         //TODO 在这里所有的类型都是IR类型 √
         VarDeclAST VarNode = (VarDeclAST) VarDeclNode;
         List<VarDeclareAST> VarDeclList = VarNode.getVarDeclareList();
         //TODO 函数或者说放在构造函数里实现初始化 √
-        if( Objects.equals(CurModule.Name, "_global")){
+        if (Objects.equals(CurModule.Name, "_global")) {
 
-            for(VarDeclareAST VarDecl : VarDeclList){
-                if(!IsCollect) {
+            for (VarDeclareAST VarDecl : VarDeclList) {
+                if (!IsCollect) {
                     IRValue NewValue = new IRValue();
                     NewValue.Type = TypeToIRType(VarNode.getType());
                     NewValue.Name = VarDecl.getId();
-                    NewValue.PtrReg = VarDecl.getId();
                     //TODO 构建新的Expr;
                     CurModule.VarInsert(NewValue);
-                }
-                else{
+                    CurModule.SetPtr(NewValue.Name,VarDecl.getId());
+                } else {
                     IRBlock PreBlock = CurBlock;
                     CurBlock = Init.Start;
-                    ExprToInstr(Init,VarDecl.getAssignExpr(),"");
+                    ExprToInstr(Init, VarDecl.getAssignExpr(), "");
                     CurBlock = PreBlock;
                 }
             }
-        }
-        else {
+        } else {
             String InitFuncName = CurModule.Name + "._init";
             IRFunc ClassInit = CurModule.FindFunc(InitFuncName);
             ClassInit.ModuleName = CurModule.Name;
-            for(VarDeclareAST VarDecl : VarDeclList){
-                if(!IsCollect) {
+            for (VarDeclareAST VarDecl : VarDeclList) {
+                if (!IsCollect) {
                     IRValue NewValue = new IRValue();
                     NewValue.Type = TypeToIRType(VarNode.getType());
                     NewValue.Name = VarDecl.getId();
-                    NewValue.Offset = CurModule.Size;
-                    NewValue.Index = CurModule.VarTable.size();
-                    //TODO 分配位置 √
+                    String Ptr = "+" + CurModule.Size;
                     CurModule.Size += TypeSize(TypeToIRType(VarNode.getType()));
                     CurModule.VarInsert(NewValue);
-                }
-                else {
+                    CurModule.SetPtr(NewValue.Name, Ptr);
+                } else {
                     IRBlock PreBlock = CurBlock;
                     CurBlock = ClassInit.Start;
-                    ExprToInstr(ClassInit,VarDecl.getAssignExpr(),"");
+                    ExprToInstr(ClassInit, VarDecl.getAssignExpr(), "");
                     CurBlock = PreBlock;
                 }
 
@@ -350,13 +323,11 @@ public class IRBuilder{
         }
 
 
-
-           // TopModule.VarInsert(irVarPair);
+        // TopModule.VarInsert(irVarPair);
     }
 
-    void FuncDeclIR(DeclAST FuncDeclNode){
+    void FuncDeclIR(DeclAST FuncDeclNode) {
         FuncDeclAST FuncNode = (FuncDeclAST) FuncDeclNode;
-        //全局函数名不加前缀
         //TODO 分配 this 指针 (即在参数表和VarTable里塞this)和参数表 √
         //TODO 在这里所有的类型都是IR类型 √
         //TODO 设置ModuleName √
@@ -364,132 +335,127 @@ public class IRBuilder{
         //TODO 所有函数函数有类名 √
         //TODO Return 块分配 √
         IRFunc PreFunc = CurFunc;
-        if(!IsCollect){
+        if (!IsCollect) {
             IRFunc NewFunc = new IRFunc();
             NewFunc.IsUsed = true;
             NewFunc.RetType = TypeToIRType(FuncNode.getFuncType());
-            NewFunc.Start = new IRBlock(BlockType.Basic,"Start",BlockNum++);
-            NewFunc.End = new IRBlock(BlockType.Basic,"End",BlockNum++);
+            NewFunc.Start = new IRBlock(BlockType.Basic, "Start", BlockNum++);
+            NewFunc.End = new IRBlock(BlockType.Basic, "End", BlockNum++);
 
-            NewFunc.Start.EndInstr = new BranchInstr("br", NewFunc.End.Label,"","");
+            NewFunc.Start.EndInstr = new BranchInstr("br", NewFunc.End.Label, "", "");
             // IRBlock NewParamBlock = new IRBlock(BlockType.Basic,"Param",BlockNum++);
-            if(Objects.equals(CurModule.Name, "_global")) {
+            if (Objects.equals(CurModule.Name, "_global")) {
                 NewFunc.ModuleName = "_global";
-                if(Objects.equals(FuncNode.getFuncName(), "main")) NewFunc.FuncName = "main";
-                else NewFunc.FuncName =CurModule.Name +"."+ FuncNode.getFuncName();
+                if (Objects.equals(FuncNode.getFuncName(), "main")) NewFunc.FuncName = "main";
+                else NewFunc.FuncName = CurModule.Name + "." + FuncNode.getFuncName();
                 CurFunc = NewFunc;
-            }
-            else {
+            } else {
                 if (Objects.equals(FuncNode.getFuncName(), CurModule.Name))
                     CurFunc = CurModule.FindFunc(CurModule.Name + "._init");
                 else {
                     NewFunc.ModuleName = CurModule.getName();
                     NewFunc.FuncName = CurModule.Name + "." + FuncNode.getFuncName();
                     CurFunc = NewFunc;
-                    String ThisReg =CurFunc.NewReg();
+                    String ThisReg = CurFunc.NewReg();
                     IRValue ThisPtr = new IRValue();
                     ThisPtr.Type = TypeToIRType(CurModule.Name);
                     ThisPtr.Name = CurFunc.FuncName + "." + "this";
-                    ThisPtr.PtrReg = ThisReg;
-                    ThisPtr.Word = 1;
 
                     CurFunc.PutParam("this", ThisPtr);
                     CurFunc.Start.VarList.put("this", ThisPtr);
 
 
                     AllocaInstr NewAlloca = new AllocaInstr(ThisReg, ThisPtr.Type);
-                    StoreInstr NewStore = new StoreInstr("store", ThisPtr.Name, ThisPtr.Type, ThisReg, ThisPtr.Type + "*", false,false);
+                    StoreInstr NewStore = new StoreInstr("store", ThisPtr.Name, ThisPtr.Type, ThisReg, ThisPtr.Type + "*", false, false);
 
                     CurFunc.Start.InsertInstr(NewAlloca);
                     CurFunc.Start.InsertInstr(NewStore);
+
+                    CurFunc.Start.putPtr("this", ThisReg);
                 }
 
                 //TODO 塞入this 指针
             }
-        //    NewFunc.Start.InsertSubBlock(NewParamBlock);
             CurBlock = CurFunc.Start;
-            if(Objects.equals(FuncNode.getFuncName(), "main") && Objects.equals(CurModule.Name, "_global")){
+            if (Objects.equals(FuncNode.getFuncName(), "main") && Objects.equals(CurModule.Name, "_global")) {
                 //TODO 直接Call Init √
                 Main = CurFunc;
-                FuncCallInstr InitCall = new FuncCallInstr("call",CurFunc.NewReg(),"void",CurModule.Name + "."+"_init",new ArrayList<>(),new ArrayList<>());
+                FuncCallInstr InitCall = new FuncCallInstr("call", CurFunc.NewReg(), "void", CurModule.Name + "." + "_init", new ArrayList<>(), new ArrayList<>());
                 CurFunc.Start.InsertInstr(InitCall);
             }
-            if(!Objects.equals(CurFunc.RetType, "void")) {
+        } else {
+            if (Objects.equals(FuncNode.getFuncName(), CurModule.Name)) CurFunc = FindFunc(CurModule, "_init");
+            else CurFunc = FindFunc(CurModule, FuncNode.getFuncName());
+            CurBlock = CurFunc.Start;
+            if (!Objects.equals(CurFunc.RetType, "void")) {
                 IRValue RetValue = new IRValue();
                 RetValue.Name = ".return";
-                RetValue.PtrReg = CurFunc.NewReg();
+                String Ptr = CurFunc.NewReg();
+                CurBlock.putPtr(RetValue.Name, Ptr);
                 RetValue.Type = CurFunc.RetType;
-                AllocaInstr NewRetAlloc = new AllocaInstr(RetValue.PtrReg, CurFunc.RetType);
-                if(RetValue.Type.contains("*")) RetValue.Word = 1;
+                AllocaInstr NewRetAlloc = new AllocaInstr(Ptr, CurFunc.RetType);
                 CurFunc.Start.InsertInstr(NewRetAlloc);
-                CurFunc.End.VarList.put(".return",RetValue);
+                CurFunc.End.VarList.put(".return", RetValue);
             }
-        }
-        else{
-            if(Objects.equals(FuncNode.getFuncName(), CurModule.Name)) CurFunc = FindFunc(CurModule,"_init");
-            else CurFunc = FindFunc(CurModule,FuncNode.getFuncName());
-            CurBlock = CurFunc.Start;
         }
 
         List<VarDeclAST> VarList = FuncNode.getParamList();
         //TODO 增添参数表项，参数表项为临时的，还有alloca，往Param块里塞Param √
-         for(VarDeclAST VarDecl:VarList) {
+        for (VarDeclAST VarDecl : VarList) {
             List<VarDeclareAST> VarDeclareList = VarDecl.getVarDeclareList();
-             if(!IsCollect) {
-                 for (VarDeclareAST VarDeclare : VarDeclareList) {
-                     IRValue Param = new IRValue();
-                     Param.Name = CurFunc.NewReg();
-                     Param.Type = TypeToIRType(VarDecl.getType());
-                     CurFunc.PutParam(VarDeclare.getId(), Param);
-                 }
-             }
-             else {
-                 for (VarDeclareAST VarDeclare : VarDeclareList) {
-                     IRValue StackParam = new IRValue();
-                     IRValue Param = CurFunc.Params.get(VarDeclare.getId());
-                     StackParam.Name = VarDeclare.getId();
-                     StackParam.PtrReg = CurFunc.NewReg();
-                     StackParam.Type = TypeToIRType( VarDecl.getType());
+            if (!IsCollect) {
+                for (VarDeclareAST VarDeclare : VarDeclareList) {
+                    IRValue Param = new IRValue();
+                    Param.Name = CurFunc.NewReg();
+                    Param.Type = TypeToIRType(VarDecl.getType());
+                    CurFunc.PutParam(VarDeclare.getId(), Param);
+                }
+            } else {
+                for (VarDeclareAST VarDeclare : VarDeclareList) {
+                    IRValue StackParam = new IRValue();
+                    IRValue Param = CurFunc.Params.get(VarDeclare.getId());
+                    StackParam.Name = VarDeclare.getId();
+                    String Ptr = CurFunc.NewReg();
+                    CurBlock.putPtr(StackParam.Name, Ptr);
+                    StackParam.Type = TypeToIRType(VarDecl.getType());
 
-                     AllocaInstr NewAlloca = new AllocaInstr(StackParam.PtrReg, StackParam.Type);
-                     if(StackParam.Type.contains("*")) StackParam.Word = 1;
-                     StoreInstr NewStore = new StoreInstr("store", Param.Name, Param.Type, StackParam.PtrReg, Param.Type + "*",false,false);
-                     CurBlock.VarList.put(VarDeclare.getId(), StackParam);
-                     CurBlock.InsertInstr(NewAlloca);
-                     CurBlock.InsertInstr(NewStore);
+                    AllocaInstr NewAlloca = new AllocaInstr(Ptr, StackParam.Type);
+                    StoreInstr NewStore = new StoreInstr("store", Param.Name, Param.Type, Ptr, Param.Type + "*", false, false);
+                    CurBlock.VarList.put(VarDeclare.getId(), StackParam);
+                    CurBlock.InsertInstr(NewAlloca);
+                    CurBlock.InsertInstr(NewStore);
 
-                     ExprToInstr(CurFunc, VarDeclare.getAssignExpr(),"");
-                 }
-             }
-         }
-
+                    ExprToInstr(CurFunc, VarDeclare.getAssignExpr(), "");
+                }
+            }
+        }
 
 
         List<StmtAST> StmtList = FuncNode.getStmtList();
         // TODO 先收集 所有的类和函数
-        if(!IsCollect) { if(Objects.equals(CurModule.Name, "_global") || !Objects.equals(FuncNode.getFuncName(), CurModule.Name))CurModule.FuncInsert(CurFunc);}
-        else{
-            for(StmtAST Stmt : StmtList) StmtIR(Stmt);
+        if (!IsCollect) {
+            if (Objects.equals(CurModule.Name, "_global") || !Objects.equals(FuncNode.getFuncName(), CurModule.Name))
+                CurModule.FuncInsert(CurFunc);
+        } else {
+            for (StmtAST Stmt : StmtList) StmtIR(Stmt);
             ReturnInstr NewReturn;
-            if(!Objects.equals(CurFunc.RetType, "void")){
-                IRValue RetValue = CurFunc.End.FindVar(".return");
+            if (!Objects.equals(CurFunc.RetType, "void")) {
+                String Ptr = CurFunc.Start.getPtr(".return");
                 String LoadReg = CurFunc.NewReg();
 
-                LoadInstr NewLoad = new LoadInstr("load",LoadReg,CurFunc.RetType,RetValue.PtrReg,CurFunc.RetType + "*",false);
-                NewReturn = new ReturnInstr("ret",CurFunc.RetType,LoadReg);
+                LoadInstr NewLoad = new LoadInstr("load", LoadReg, CurFunc.RetType, Ptr, CurFunc.RetType + "*", false);
+                NewReturn = new ReturnInstr("ret", CurFunc.RetType, LoadReg);
                 CurFunc.End.InsertInstr(NewLoad);
-            }
-            else NewReturn  = new ReturnInstr("ret","void","");
-         //   CurFunc.getLastBlock().InsertInstr(NewBranch);
-            if(!Objects.equals(CurFunc.FuncName, CurModule.Name+"._init"))CurFunc.End.EndInstr = NewReturn;
+            } else NewReturn = new ReturnInstr("ret", "void", "");
+            if (!Objects.equals(CurFunc.FuncName, CurModule.Name + "._init")) CurFunc.End.EndInstr = NewReturn;
         }
         CurBlock = CurFunc.End;
         CurFunc = PreFunc;
     }
 
-    void StmtIR(StmtAST StmtNode){
-        if(StmtNode == null) return;
-        if(CurBlock.isShut()) return;
+    void StmtIR(StmtAST StmtNode) {
+        if (StmtNode == null) return;
+        if (CurBlock.isShut()) return;
         else {
             if (StmtNode instanceof JumpStmtAST) JumpStmtIR(StmtNode);
             else if (StmtNode instanceof ReturnStmtAST) ReturnStmtIR(StmtNode);
@@ -502,13 +468,13 @@ public class IRBuilder{
         }
     }
 
-    void ClassDeclIR(DeclAST ClassDeclNode){
+    void ClassDeclIR(DeclAST ClassDeclNode) {
         //TODO 塞入 类初始化函数 初始化函数格式：类名+"."+"_init" √
         ClassDeclAST ClassNode = (ClassDeclAST) ClassDeclNode;
         IRModule ClassModule;
-        if(!IsCollect) {
+        if (!IsCollect) {
             ClassModule = new IRModule();
-            ClassModule.Name = "_"+ClassNode.getClassName();
+            ClassModule.Name = "_" + ClassNode.getClassName();
             ModuleList.add(ClassModule);
 
             IRFunc ClassInit = new IRFunc();
@@ -521,83 +487,80 @@ public class IRBuilder{
 
             IRValue ThisPtr = new IRValue();
             IRValue StackThisPtr = new IRValue();
-            ThisPtr.Type = TypeToIRType(ClassModule.Name );
+            ThisPtr.Type = TypeToIRType(ClassModule.Name);
             String ThisReg = ClassInit.NewReg();
 
             ThisPtr.Name = ClassInit.FuncName + "." + "this";
-            ThisPtr.PtrReg = ThisReg;
             ClassInit.PutParam("this", ThisPtr);
 
 
             StackThisPtr.Type = ThisPtr.Type;
             StackThisPtr.Name = "this";
-            ClassInit.Start.VarList.put("this",StackThisPtr);
+            ClassInit.Start.VarList.put("this", StackThisPtr);
             AllocaInstr NewAlloca = new AllocaInstr(ThisReg, ThisPtr.Type);
-            StackThisPtr.Word = 1;
-            StoreInstr NewStore = new StoreInstr("store", ThisPtr.Name, ThisPtr.Type, ThisReg, ThisPtr.Type + "*", false,false);
-            ClassInit.Start.EndInstr = new BranchInstr("br",ClassInit.End.Label,"","");
-           // IRBlock NewParamBlock = new IRBlock(BlockType.Basic, "Param", BlockNum++);
+            StoreInstr NewStore = new StoreInstr("store", ThisPtr.Name, ThisPtr.Type, ThisReg, ThisPtr.Type + "*", false, false);
+            ClassInit.Start.EndInstr = new BranchInstr("br", ClassInit.End.Label, "", "");
+            // IRBlock NewParamBlock = new IRBlock(BlockType.Basic, "Param", BlockNum++);
 
             ReturnInstr NewReturn = new ReturnInstr("ret", "void", "");
             ClassInit.Start.InsertInstr(NewAlloca);
             ClassInit.Start.InsertInstr(NewStore);
             ClassInit.End.EndInstr = NewReturn;
 
-          //  ClassInit.Start.InsertSubBlock(NewParamBlock);
+            //  ClassInit.Start.InsertSubBlock(NewParamBlock);
             ClassModule.FuncInsert(ClassInit);
-        }
-        else{
+        } else {
             ClassModule = GlobalModule;
-            for(IRModule module:ModuleList){
-                if(Objects.equals(module.Name,"_"+ClassNode.getClassName())){
+            for (IRModule module : ModuleList) {
+                if (Objects.equals(module.Name, "_" + ClassNode.getClassName())) {
                     ClassModule = module;
                     break;
                 }
             }
 
         }
-        IRModule PreModule =  CurModule;
+        IRModule PreModule = CurModule;
         CurModule = ClassModule;
-        for(DeclAST Decl:ClassNode.getDeclList()) DeclIR(Decl);
+        for (DeclAST Decl : ClassNode.getDeclList()) DeclIR(Decl);
         CurModule = PreModule;
         //     CurModule = null;
     }
 
-
-    IRBlock FindLoopBody(IRBlock Block){
+    IRBlock FindLoopBody(IRBlock Block) {
         IRBlock curBlock = Block;
-        while( curBlock != null) {
-            if ( curBlock.blockType == BlockType.Body) return  curBlock;
-            else  curBlock =  curBlock.Father;
+        while (curBlock != null) {
+            if (curBlock.blockType == BlockType.Body) return curBlock;
+            else curBlock = curBlock.Father;
         }
         return null;
     }
 
-    void JumpStmtIR(StmtAST JumpStmtNode){
+    void JumpStmtIR(StmtAST JumpStmtNode) {
         //或者让后面的无法加入
         //跳到本块块头或者下一块
         //即兄弟
         JumpStmtAST JumpStmt = (JumpStmtAST) JumpStmtNode;
         IRBlock Body = FindLoopBody(CurBlock);
         IRBlock Father = Body.Father;
-        IRBlock Condition = new IRBlock(BlockType.Basic,"",BlockNum);
-        for(IRBlock block :Father.SubBlocks){
-            if(block.blockType == BlockType.Condition) Condition = block;
+        IRBlock Condition = new IRBlock(BlockType.Basic, "", BlockNum);
+        for (IRBlock block : Father.SubBlocks) {
+            if (block.blockType == BlockType.Condition) Condition = block;
         }
         BranchInstr Jump;
-        if(JumpStmt.isBreak()) Jump = new BranchInstr("br",Father.SubBlocks.get(Father.SubBlocks.size()-1).Label,"","");
-        else Jump = new BranchInstr("br",Condition.Label,"","");
+        if (JumpStmt.isBreak())
+            Jump = new BranchInstr("br", Father.SubBlocks.get(Father.SubBlocks.size() - 1).Label, "", "");
+        else Jump = new BranchInstr("br", Condition.Label, "", "");
 
         CurBlock.EndInstr = Jump;
         CurBlock.ShutBlock();
     }
 
-    void ReturnStmtIR(StmtAST ReturnStmtNode){
+    void ReturnStmtIR(StmtAST ReturnStmtNode) {
         ReturnStmtAST ReturnStmt = (ReturnStmtAST) ReturnStmtNode;
-        if(ReturnStmt.getExpr() != null) {
-            IRValue Return = CurFunc.End.FindVar(".return");
+        if (ReturnStmt.getExpr() != null) {
+            String Ptr = CurFunc.Start.getPtr(".return");
             IRValue Ret = ExprToInstr(CurFunc, ReturnStmt.getExpr(), "");
-            StoreInstr NewStore = new StoreInstr("store", Ret.Name, Ret.Type, Return.PtrReg, Ret.Type + '*', !Return.PtrReg.contains("."),!Ret.Name.contains("."));
+            StoreInstr NewStore = new StoreInstr("store", Ret.Name, Ret.Type, Ptr, Ret.Type + '*', !Ptr.contains("."), !Ret.Name.contains("."));
             CurBlock.InsertInstr(NewStore);
         }
         CurBlock.EndInstr = new BranchInstr("br", CurFunc.End.Label, "", "");
@@ -605,22 +568,22 @@ public class IRBuilder{
     }
 
     //先在当前block 塞 跳转
-    void WhileStmtIR(StmtAST WhileStmtNode){
+    void WhileStmtIR(StmtAST WhileStmtNode) {
         WhileStmtAST WhileStmt = (WhileStmtAST) WhileStmtNode;
 
-        IRBlock NewConditionBlock = new IRBlock(BlockType.Condition,"While-Condition",BlockNum++);
+        IRBlock NewConditionBlock = new IRBlock(BlockType.Condition, "While-Condition", BlockNum++);
         CurBlock.InsertSubBlock(NewConditionBlock);
 
-        IRBlock NewBodyBlock = new IRBlock(BlockType.Body,"While-Body",BlockNum++);
+        IRBlock NewBodyBlock = new IRBlock(BlockType.Body, "While-Body", BlockNum++);
         CurBlock.InsertSubBlock(NewBodyBlock);
 
-        IRBlock SucceedBlock = new IRBlock(BlockType.Basic,"Succeed",BlockNum++);
+        IRBlock SucceedBlock = new IRBlock(BlockType.Basic, "Succeed", BlockNum++);
         CurBlock.InsertSubBlock(SucceedBlock);
 
 
-        BranchInstr PreceedJump = new BranchInstr("br",NewConditionBlock.Label,"", "");
-        BranchInstr BodyJump = new BranchInstr("br",NewConditionBlock.Label,"", "");
-        BranchInstr ConditionJump =  new BranchInstr("br",NewBodyBlock.Label,SucceedBlock.Label,"");
+        BranchInstr PreceedJump = new BranchInstr("br", NewConditionBlock.Label, "", "");
+        BranchInstr BodyJump = new BranchInstr("br", NewConditionBlock.Label, "", "");
+        BranchInstr ConditionJump = new BranchInstr("br", NewBodyBlock.Label, SucceedBlock.Label, "");
 
         SucceedBlock.EndInstr = CurBlock.EndInstr;
         CurBlock.EndInstr = PreceedJump;
@@ -628,9 +591,8 @@ public class IRBuilder{
         NewBodyBlock.EndInstr = BodyJump;
 
         CurBlock = NewConditionBlock;
-        IRValue Condition = ExprToInstr(CurFunc,WhileStmt.getConditionExpr(),"");
-        CurBlock.EndInstr = new BranchInstr("br",NewBodyBlock.Label,SucceedBlock.Label, Condition.Name);
-
+        IRValue Condition = ExprToInstr(CurFunc, WhileStmt.getConditionExpr(), "");
+        CurBlock.EndInstr = new BranchInstr("br", NewBodyBlock.Label, SucceedBlock.Label, Condition.Name);
 
 
         CurBlock = NewBodyBlock;
@@ -639,104 +601,98 @@ public class IRBuilder{
 
     }
 
-    void IfStmtIR(StmtAST IfStmtNode){
+    void IfStmtIR(StmtAST IfStmtNode) {
         IfStmtAST IfStmt = (IfStmtAST) IfStmtNode;
 
-        IRBlock NewConditionBlock = new IRBlock(BlockType.Condition,"If-Condition",BlockNum++);
+        IRBlock NewConditionBlock = new IRBlock(BlockType.Condition, "If-Condition", BlockNum++);
         CurBlock.InsertSubBlock(NewConditionBlock);
 
-        IRBlock NewTrueBlock = new IRBlock(BlockType.TrueStmt,"If-True-Stmt",BlockNum++);
+        IRBlock NewTrueBlock = new IRBlock(BlockType.TrueStmt, "If-True-Stmt", BlockNum++);
         CurBlock.InsertSubBlock(NewTrueBlock);
 
-        IRBlock NewFalseBlock = new IRBlock(BlockType.FalseStmt,"If-False-Stmt",BlockNum++);
+        IRBlock NewFalseBlock = new IRBlock(BlockType.FalseStmt, "If-False-Stmt", BlockNum++);
         CurBlock.InsertSubBlock(NewFalseBlock);
 
-        IRBlock SucceedBlock = new IRBlock(BlockType.Basic,"Succeed",BlockNum++);
+        IRBlock SucceedBlock = new IRBlock(BlockType.Basic, "Succeed", BlockNum++);
         CurBlock.InsertSubBlock(SucceedBlock);
 
 
-        BranchInstr FalseJump = new BranchInstr("br",SucceedBlock.Label,"", "");
-        BranchInstr PreceedJump = new BranchInstr("br",NewConditionBlock.Label,"", "");
-        BranchInstr TrueJump = new BranchInstr("br",SucceedBlock.Label,"", "");
+        BranchInstr FalseJump = new BranchInstr("br", SucceedBlock.Label, "", "");
+        BranchInstr PreceedJump = new BranchInstr("br", NewConditionBlock.Label, "", "");
+        BranchInstr TrueJump = new BranchInstr("br", SucceedBlock.Label, "", "");
 
         IRBlock PreBlock = CurBlock;
         CurBlock = NewConditionBlock;
-        IRValue Condition = ExprToInstr(CurFunc,IfStmt.getConditionExpr(),"");
-        CurBlock.EndInstr = new BranchInstr("br",NewTrueBlock.Label,NewFalseBlock.Label, Condition.Name);
+        IRValue Condition = ExprToInstr(CurFunc, IfStmt.getConditionExpr(), "");
+        CurBlock.EndInstr = new BranchInstr("br", NewTrueBlock.Label, NewFalseBlock.Label, Condition.Name);
         CurBlock = PreBlock;
 
 
         SucceedBlock.EndInstr = CurBlock.EndInstr;
         CurBlock.EndInstr = PreceedJump;
         NewTrueBlock.EndInstr = TrueJump;
-        NewFalseBlock.EndInstr  = FalseJump;
-     //   NewConditionBlock.EndInstr = ConditionJump;
+        NewFalseBlock.EndInstr = FalseJump;
+        //   NewConditionBlock.EndInstr = ConditionJump;
 
 
         CurBlock = NewTrueBlock;
         StmtIR(IfStmt.getTrueStmt());
 
 
-        if(IfStmt.getFalseStmt() != null) {
+        if (IfStmt.getFalseStmt() != null) {
             CurBlock = NewFalseBlock;
             StmtIR(IfStmt.getFalseStmt());
         }
         CurBlock = SucceedBlock;
     }
 
-    void ForStmtIR(StmtAST ForStmtNode){
+    void ForStmtIR(StmtAST ForStmtNode) {
         ForStmtAST ForStmt = (ForStmtAST) ForStmtNode;
 
-        IRBlock NewConditionBlock = new IRBlock(BlockType.Condition,"For-Condition",BlockNum++);
+        IRBlock NewConditionBlock = new IRBlock(BlockType.Condition, "For-Condition", BlockNum++);
         CurBlock.InsertSubBlock(NewConditionBlock);
 
-        IRBlock NewBodyBlock = new IRBlock(BlockType.Body,"For-Body",BlockNum++);
+        IRBlock NewBodyBlock = new IRBlock(BlockType.Body, "For-Body", BlockNum++);
         CurBlock.InsertSubBlock(NewBodyBlock);
 
-        IRBlock IncrBlock = new IRBlock(BlockType.Basic,"For-Incr",BlockNum++);
+        IRBlock IncrBlock = new IRBlock(BlockType.Basic, "For-Incr", BlockNum++);
         CurBlock.InsertSubBlock(IncrBlock);
 
-        IRBlock SucceedBlock = new IRBlock(BlockType.Basic,"Succeed",BlockNum++);
+        IRBlock SucceedBlock = new IRBlock(BlockType.Basic, "Succeed", BlockNum++);
         CurBlock.InsertSubBlock(SucceedBlock);
 
-
-
-        if(ForStmt.getInitStmt()!= null){
+        if (ForStmt.getInitStmt() != null) {
             String Type = ForStmt.getInitStmt().getType();
             List<VarDeclareAST> VarDeclList = ForStmt.getInitStmt().getVarDeclareList();
             //Alloca 加 等号
-            for(VarDeclareAST VarDeclare : VarDeclList){
+            for (VarDeclareAST VarDeclare : VarDeclList) {
                 IRValue NewValue = new IRValue();
                 NewValue.Name = VarDeclare.getId();
-                NewValue.PtrReg = CurFunc.NewReg();
                 NewValue.Type = TypeToIRType(Type);
-                AllocaInstr RetAlloc = new AllocaInstr(CurFunc.NewReg(),NewValue.Type);
+                AllocaInstr RetAlloc = new AllocaInstr(CurFunc.NewReg(), NewValue.Type);
                 CurBlock.InsertInstr(RetAlloc);
-                CurBlock.VarList.put(NewValue.Name,NewValue);
-                ExprToInstr(CurFunc,VarDeclare.getAssignExpr(),"");
+                CurBlock.VarList.put(NewValue.Name, NewValue);
+                CurBlock.putPtr(NewValue.Name, CurFunc.NewReg());
+                ExprToInstr(CurFunc, VarDeclare.getAssignExpr(), "");
             }
-        }
-        else ExprToInstr(CurFunc,ForStmt.getInitExpr(),"");
+        } else ExprToInstr(CurFunc, ForStmt.getInitExpr(), "");
 
-        BranchInstr PreceedJump = new BranchInstr("br", NewConditionBlock.Label,"", "");
-        BranchInstr ForBodyJump = new BranchInstr("br", IncrBlock.Label,"", "");
-        BranchInstr IncrJump = new BranchInstr("br",NewConditionBlock.Label,"","");
+        BranchInstr PreceedJump = new BranchInstr("br", NewConditionBlock.Label, "", "");
+        BranchInstr ForBodyJump = new BranchInstr("br", IncrBlock.Label, "", "");
+        BranchInstr IncrJump = new BranchInstr("br", NewConditionBlock.Label, "", "");
 
         SucceedBlock.EndInstr = CurBlock.EndInstr;
         CurBlock.EndInstr = PreceedJump;
         NewBodyBlock.EndInstr = ForBodyJump;
         IncrBlock.EndInstr = IncrJump;
 
-        if(ForStmt.getConditionExpr() != null){
+        if (ForStmt.getConditionExpr() != null) {
             CurBlock = NewConditionBlock;
-            IRValue Condition = ExprToInstr(CurFunc,ForStmt.getConditionExpr(),"");
-            CurBlock.EndInstr = new BranchInstr("br",NewBodyBlock.Label,SucceedBlock.Label, Condition.Name);
+            IRValue Condition = ExprToInstr(CurFunc, ForStmt.getConditionExpr(), "");
+            CurBlock.EndInstr = new BranchInstr("br", NewBodyBlock.Label, SucceedBlock.Label, Condition.Name);
+        } else {
+            NewConditionBlock.EndInstr = new BranchInstr("br", NewBodyBlock.Label, "", "");
         }
-        else {
-            NewConditionBlock.EndInstr = new BranchInstr("br",NewBodyBlock.Label,"","");
-        }
-
-
 
 
         CurBlock = NewBodyBlock;
@@ -745,30 +701,30 @@ public class IRBuilder{
 
         IRBlock PreBlock = CurBlock;
         CurBlock = IncrBlock;
-        ExprToInstr(CurFunc,ForStmt.getIncrExpr(),"");
+        ExprToInstr(CurFunc, ForStmt.getIncrExpr(), "");
         CurBlock = PreBlock;
 
     }
 
-    void ExprStmtIR(StmtAST ExprStmtNode){
+    void ExprStmtIR(StmtAST ExprStmtNode) {
         ExprStmtAST ExprStmt = (ExprStmtAST) ExprStmtNode;
         //CurBlock.InsertExpr(ExprStmt.getExpr());
-        ExprToInstr(CurFunc,ExprStmt.getExpr(),"");
+        ExprToInstr(CurFunc, ExprStmt.getExpr(), "");
     }
 
-    void SuiteIR(StmtAST SuiteNode){
+    void SuiteIR(StmtAST SuiteNode) {
         //生成新的block
         SuiteAST Suite = (SuiteAST) SuiteNode;
 
-        IRBlock NewBasicBlock = new IRBlock(BlockType.Basic,"Basic",BlockNum++);
+        IRBlock NewBasicBlock = new IRBlock(BlockType.Basic, "Basic", BlockNum++);
         CurBlock.InsertSubBlock(NewBasicBlock);
 
-        IRBlock NewSucceedBlock = new IRBlock(BlockType.Basic,"Succeed",BlockNum++);
+        IRBlock NewSucceedBlock = new IRBlock(BlockType.Basic, "Succeed", BlockNum++);
         CurBlock.InsertSubBlock(NewSucceedBlock);
 
 
-        BranchInstr PreceedJump = new BranchInstr("br",NewBasicBlock.Label,"", "");
-        BranchInstr BasicJump = new BranchInstr("br",NewSucceedBlock.Label,"", "");
+        BranchInstr PreceedJump = new BranchInstr("br", NewBasicBlock.Label, "", "");
+        BranchInstr BasicJump = new BranchInstr("br", NewSucceedBlock.Label, "", "");
 
         NewSucceedBlock.EndInstr = CurBlock.EndInstr;
         CurBlock.EndInstr = PreceedJump;
@@ -776,133 +732,166 @@ public class IRBuilder{
 
         List<StmtAST> StmtList = Suite.getStmtList();
         CurBlock = NewBasicBlock;
-        for(StmtAST Stmt : StmtList) StmtIR(Stmt);
+        for (StmtAST Stmt : StmtList) StmtIR(Stmt);
         CurBlock = NewSucceedBlock;
     }
 
-    IRFunc FindFunc(IRModule Module,String FuncName){
-        if(Module.FindFunc(FuncName)!= null) return Module.FindFunc(FuncName);
-        else if(Module.FindFunc(Module.Name +"." + FuncName) != null) return Module.FindFunc( Module.Name +"." + FuncName);
+    IRFunc FindFunc(IRModule Module, String FuncName) {
+        if (Module.FindFunc(FuncName) != null) return Module.FindFunc(FuncName);
+        else if (Module.FindFunc(Module.Name + "." + FuncName) != null)
+            return Module.FindFunc(Module.Name + "." + FuncName);
         else return GlobalModule.FindFunc(FuncName);
     }
 
-    IRValue ModuleFindValue(IRModule Module, String ValueName){
+    IRValue ModuleFindValue(IRModule Module, String ValueName) {
         return Module.FindValue(ValueName);
     }
 
-    IRValue StackFindValue(IRBlock Block,String ValueName){
-        IRBlock curBlock  = Block;
-        while(curBlock != null){
-            if(curBlock.FindVar(ValueName) != null) return curBlock.FindVar(ValueName);
-            else curBlock = curBlock.Father;
-        }
+    String ModuleFindPtr(IRModule Module, String ValueName) {
+        return Module.GetPtr(ValueName);
+    }
+
+    IRModule FindModule(String ModuleType) {
+        for (IRModule Module : ModuleList)
+            if (Objects.equals(Module.Name, ModuleType))
+                return Module;
         return null;
     }
 
-    void VarStmtIR(StmtAST VarStmtNode){
+
+    IRValue FindValue(IRBlock Block, String ValueName, IRModule Module) {
+        IRBlock curBlock = Block;
+        while (curBlock != null) {
+            if (curBlock.FindVar(ValueName) != null) return curBlock.FindVar(ValueName);
+            else curBlock = curBlock.Father;
+        }
+        if (Module.FindValue(ValueName) != null) return Module.FindValue(ValueName);
+        return GlobalModule.FindValue(ValueName);
+    }
+
+    String FindPtr(IRBlock Block, String Name, IRModule Module) {
+        IRBlock curBlock = Block;
+        while (curBlock != null) {
+            if (curBlock.getPtr(Name) != null) return curBlock.getPtr(Name);
+            else curBlock = curBlock.Father;
+        }
+        if (Module.GetPtr(Name) != null) return Module.GetPtr(Name);
+        return GlobalModule.GetPtr(Name);
+    }
+
+    void VarStmtIR(StmtAST VarStmtNode) {
         //TODO 如果有 = 就拆开 √
         //添加 Alloca
         VarStmtAST VarStmt = (VarStmtAST) VarStmtNode;
         String Type = VarStmt.getType();
         List<VarDeclareAST> VarDeclList = VarStmt.getVarDeclList();
         //Alloca 加 等号
-        for(VarDeclareAST VarDeclare : VarDeclList){
+        for (VarDeclareAST VarDeclare : VarDeclList) {
             IRValue NewValue = new IRValue();
             NewValue.Name = VarDeclare.getId();
-            NewValue.PtrReg = CurFunc.NewReg();
             NewValue.Type = TypeToIRType(Type);
-            AllocaInstr RetAlloc = new AllocaInstr( NewValue.PtrReg,NewValue.Type);
-            if( NewValue.Type.contains("*"))  NewValue.Word = 1;
+            String Ptr = CurFunc.NewReg();
+            CurBlock.putPtr(VarDeclare.getId(), Ptr);
+            AllocaInstr RetAlloc = new AllocaInstr(Ptr, NewValue.Type);
             //TODO 如果不是内建类 加上调用初始化函数
             CurBlock.InsertInstr(RetAlloc);
-            CurBlock.VarList.put(VarDeclare.getId(),NewValue);
-            ExprToInstr(CurFunc,VarDeclare.getAssignExpr(),"");
+            CurBlock.VarList.put(VarDeclare.getId(), NewValue);
+            ExprToInstr(CurFunc, VarDeclare.getAssignExpr(), "");
         }
     }
 
-    List<IRValue> ExprListToIRValue(IRFunc Func, IRBlock Block, List<ExprAST> ExprLists,String RetReg){
+    List<IRValue> ExprListToIRValue(IRFunc Func, IRBlock Block, List<ExprAST> ExprLists, String RetReg) {
         List<IRValue> Ret = new ArrayList<>();
         CurBlock = Block;
-        for(ExprAST expr: ExprLists) Ret.add(ExprToInstr(Func,expr,RetReg));
+        for (ExprAST expr : ExprLists) Ret.add(ExprToInstr(Func, expr, RetReg));
         return Ret;
     }
 
-    void NewArray(IRFunc Func,String Rd,String Type,List<IRValue> AllSize,Integer CurDemension){
-        if(CurDemension == AllSize.size()) return;
-        if(CurDemension != AllSize.size()-1) {
-            IRBlock NewCondition = new IRBlock(BlockType.Condition, "NewArrayCondition", BlockNum++);
-            IRBlock NewBlock = new IRBlock(BlockType.Basic, "NewArrayBody", BlockNum++);
-            IRBlock NewSucceed = new IRBlock(BlockType.Basic, "Succeed", BlockNum++);
-            CurBlock.InsertSubBlock(NewCondition);
-            CurBlock.InsertSubBlock(NewBlock);
-            CurBlock.InsertSubBlock(NewSucceed);
-            String Iteration = Func.NewReg();
-            String Condition = Func.NewReg();
-            String Multi = Func.NewReg();
-            String NewPtr = Func.NewReg();
-            String Addi = Func.NewReg();
-            String AimType;
-            AimType = Type.substring(0, Type.lastIndexOf('*'));
-            PhiInstr PhiStart = new PhiInstr("phi", "start", Iteration, TypeToIRType("int"));
-            OperationInstr NewIterInit = new OperationInstr("add", "0", "0", TypeToIRType("int"), TypeToIRType("int"), Iteration, "");
-            OperationInstr NewComp = new OperationInstr("icmp", Iteration, AllSize.get(CurDemension).Name, TypeToIRType("int"), TypeToIRType("int"), Condition, "ult");
-            BranchInstr NewCondiBr = new BranchInstr("br", NewBlock.Label, NewSucceed.Label, Condition);
-            BranchInstr NewInitBr = new BranchInstr("br", NewCondition.Label, "", "");
-            CurBlock.InsertInstr(PhiStart);
-            CurBlock.InsertInstr(NewIterInit);
-            NewSucceed.EndInstr = CurBlock.EndInstr;
-            CurBlock.EndInstr = NewInitBr;
-
-            NewCondition.InsertInstr(NewComp);
-            NewCondition.EndInstr = NewCondiBr;
+    String NewArray(IRFunc Func, String Ptr, String Type, List<IRValue> AllSize, Integer CurDemension) {
+        String Multi = Func.NewReg();
+        String NewPtr = Func.NewReg();
+        String Addi = Func.NewReg();
+        String Rd = Func.NewReg();
+      //  String AimType;
+        Boolean IsBultin = Objects.equals(Type, "i32") ||Objects.equals(Type, "_string")||Objects.equals(Type, "i8");
+        if (CurDemension != AllSize.size()) {
             List<String> Params = new ArrayList<>();
             List<String> ParamTypes = new ArrayList<>();
-                Params.add(Multi);
-                ParamTypes.add(TypeToIRType("int"));
-                OperationInstr NewMulti = new OperationInstr("mul", AllSize.get(CurDemension + 1).Name, Integer.toString(TypeSize(AimType) / 8), TypeToIRType("int"), TypeToIRType("int"), Multi, "");
-                OperationInstr NewAddi = new OperationInstr("addi", Multi, "4", TypeToIRType("int"), TypeToIRType("int"), Addi, "");
-                NewBlock.InsertInstr(NewMulti);
-            NewBlock.InsertInstr(NewAddi);
-
-            FuncCallInstr NewMalloc = new FuncCallInstr("link", Rd, Type, "malloc", ParamTypes, Params);
-            StoreInstr SizeStore = new StoreInstr("store",AllSize.get(CurDemension + 1).Name,TypeToIRType("int"),Rd,Type,false,false);
-            GetelementInstr NewGet = new GetelementInstr("getelement", "index", NewPtr, AimType, Rd, Type, Iteration, TypeToIRType("int"), 0, TypeToIRType("int"), false);
-            BranchInstr NewLoopBr = new BranchInstr("br", NewCondition.Label, "", "");
-            OperationInstr NewIterAdd = new OperationInstr("add", Iteration, "1", TypeToIRType("int"), TypeToIRType("int"), Iteration, "");
-            NewBlock.InsertInstr(NewMalloc);
-            NewBlock.InsertInstr(SizeStore);
-            NewBlock.InsertInstr(NewGet);
-            NewBlock.EndInstr = NewLoopBr;
-            CurBlock = NewBlock;
-            NewArray(Func, NewPtr, AimType, AllSize, CurDemension + 1);
-            NewBlock.InsertInstr(NewIterAdd);
-
-            PhiInstr PhiEnd = new PhiInstr("phi", "end", Iteration, TypeToIRType("int"));
-            NewSucceed.InsertInstr(PhiEnd);
-            CurBlock = NewSucceed;
-            AddLinking("malloc");
-        }
-        else{
-            List<String> Params = new ArrayList<>();
-            List<String> ParamTypes = new ArrayList<>();
-            String Addi = Func.NewReg();
-            String Multi = Func.NewReg();
-            String AimType = Type.substring(0,Type.indexOf("*"));
-            Params.add(Addi);
+            Params.add(Multi);
             ParamTypes.add(TypeToIRType("int"));
-            OperationInstr NewMulti = new OperationInstr("mul", AllSize.get(CurDemension).Name, Integer.toString(TypeSize(AimType) / 8), TypeToIRType("int"), TypeToIRType("int"), Multi, "");
-            OperationInstr NewAdd = new OperationInstr("add", Multi, "4", TypeToIRType("int"), TypeToIRType("int"), Addi, "");
+            OperationInstr NewMulti = new OperationInstr("mul", AllSize.get(CurDemension).Name, "4", TypeToIRType("int"), TypeToIRType("int"), Multi, "");
+            OperationInstr NewAddi = new OperationInstr("add", Multi, "4", TypeToIRType("int"), TypeToIRType("int"), Addi, "");
             CurBlock.InsertInstr(NewMulti);
-            CurBlock.InsertInstr(NewAdd);
+            CurBlock.InsertInstr(NewAddi);
+
             FuncCallInstr NewMalloc = new FuncCallInstr("link", Rd, Type, "malloc", ParamTypes, Params);
-            StoreInstr SizeStore = new StoreInstr("store", AllSize.get(CurDemension).Name,TypeToIRType("int"),Rd,Type,false,false);
+            StoreInstr SizeStore = new StoreInstr("store", AllSize.get(CurDemension).Name, TypeToIRType("int"), Rd, Type, false, false);
             CurBlock.InsertInstr(NewMalloc);
             CurBlock.InsertInstr(SizeStore);
-            return;
+            if(CurDemension != 0){
+                StoreInstr PtrStore = new StoreInstr("store", Rd, Type, Ptr, Type + "*", !Ptr.contains("."), false);
+                CurBlock.InsertInstr(PtrStore);
+            }
         }
+        else {
+            if (!IsBultin) {
+                //  StoreInstr PtrStore = new StoreInstr("store", "a", "a", "a", "a" + "*", false, false);
+                String InitReg = Func.NewReg();
+                List<String> MParams = new ArrayList<>();
+                List<String> MParamTypes = new ArrayList<>();
+                MParams.add(Addi);
+                MParamTypes.add(TypeToIRType("int"));
+                OperationInstr NewAddi = new OperationInstr("add", Integer.toString(TypeSize(Type) / 8), "0", TypeToIRType("int"), TypeToIRType("int"), Addi, "");
+                CurBlock.InsertInstr(NewAddi);
+                FuncCallInstr NewMalloc = new FuncCallInstr("link", Rd, Type, "malloc", MParamTypes, MParams);
+                CurBlock.InsertInstr(NewMalloc);
+                List<String> Params = new ArrayList<>();
+                List<String> ParamTypes = new ArrayList<>();
+                Params.add(Rd);
+                ParamTypes.add(Type);
+                FuncCallInstr CallInit = new FuncCallInstr("call", InitReg, "void", Type + "._init", ParamTypes, Params);
+                CurBlock.InsertInstr(CallInit);
+                StoreInstr PtrStore = new StoreInstr("store", Rd, Type, Ptr, Type + "*", !Ptr.contains("."), false);
+                CurBlock.InsertInstr(PtrStore);
+            }
+            return "";
+        }
+        IRBlock NewCondition = new IRBlock(BlockType.Condition, "NewArrayCondition", BlockNum++);
+        IRBlock NewBlock = new IRBlock(BlockType.Basic, "NewArrayBody", BlockNum++);
+        IRBlock NewSucceed = new IRBlock(BlockType.Basic, "Succeed", BlockNum++);
+        CurBlock.InsertSubBlock(NewCondition);
+        CurBlock.InsertSubBlock(NewBlock);
+        CurBlock.InsertSubBlock(NewSucceed);
+        String Iteration = Func.NewReg();
+        String Condition = Func.NewReg();
+        PhiInstr PhiStart = new PhiInstr("phi", "start", Iteration, TypeToIRType("int"));
+        OperationInstr NewIterInit = new OperationInstr("add", "0", "0", TypeToIRType("int"), TypeToIRType("int"), Iteration, "");
+        OperationInstr NewComp = new OperationInstr("icmp", Iteration, AllSize.get(CurDemension).Name, TypeToIRType("int"), TypeToIRType("int"), Condition, "ult");
+        BranchInstr NewCondiBr = new BranchInstr("br", NewBlock.Label, NewSucceed.Label, Condition);
+        BranchInstr NewInitBr = new BranchInstr("br", NewCondition.Label, "", "");
+        CurBlock.InsertInstr(PhiStart);
+        CurBlock.InsertInstr(NewIterInit);
+        NewSucceed.EndInstr = CurBlock.EndInstr;
+        CurBlock.EndInstr = NewInitBr;
+
+        NewCondition.InsertInstr(NewComp);
+        NewCondition.EndInstr = NewCondiBr;
+        GetelementInstr NewGet = new GetelementInstr("getelement", "index", NewPtr, Type, Rd, Type, Iteration, TypeToIRType("int"), 0, TypeToIRType("int"), false);
+        BranchInstr NewLoopBr = new BranchInstr("br", NewCondition.Label, "", "");
+
+        NewBlock.InsertInstr(NewGet);
+        NewBlock.EndInstr = NewLoopBr;
+        CurBlock = NewBlock;
+        NewArray(Func, NewPtr, Type.substring(0, Type.lastIndexOf('*')), AllSize, CurDemension + 1);
+        OperationInstr NewIterAdd = new OperationInstr("add", Iteration, "1", TypeToIRType("int"), TypeToIRType("int"), Iteration, "");
+        NewBlock.InsertInstr(NewIterAdd);
+
+        PhiInstr PhiEnd = new PhiInstr("phi", "end", Iteration, TypeToIRType("int"));
+        NewSucceed.InsertInstr(PhiEnd);
+        CurBlock = NewSucceed;
+        AddLinking("malloc");
+        return Rd;
     }
-
-
 
     IRValue ExprToInstr(IRFunc Func, ExprAST Root,String RetReg){
         if(Root == null) return null;
@@ -931,33 +920,32 @@ public class IRBuilder{
         if(Root.getType() == ExprType.New){
             NewTypeAST NewTypeNode =  (NewTypeAST) Root;
             if(NewTypeNode.IsNewArray()){
-                Ret.PtrReg = Rd;
                 Ret.Type = TypeToIRType(NewTypeNode.getNewType());
                 List<IRValue> Values = ExprListToIRValue(Func,CurBlock,NewTypeNode.getExprList(),"");
-                NewArray(Func,Ret.PtrReg,Ret.Type,Values,0);
+                Ret.Name = NewArray(Func,"",Ret.Type,Values,0);
                 AddLinking("malloc");
             }
             else{
-                Ret.PtrReg = Rd;
                 Ret.Type = TypeToIRType(NewTypeNode.getNewType());
-                String SizeRd  = Func.NewReg();
-                List<String> Params = new ArrayList<>();
-                List<String> ParamTypes = new ArrayList<>();
-                OperationInstr NewOp = new OperationInstr("add",Integer.toString(TypeSize(TypeToIRType(NewTypeNode.getNewType()))/8+4),"0",TypeToIRType("int"),TypeToIRType("int"), SizeRd,"");
-                Params.add(SizeRd);
-                ParamTypes.add(TypeToIRType("int"));
-                FuncCallInstr NewLink = new FuncCallInstr("link",Ret.PtrReg,Ret.Type,"malloc",ParamTypes,Params);
-                CurBlock.InsertInstr(NewOp);
-                CurBlock.InsertInstr(NewLink);
-                if(Ret.Type.charAt(0) == '_'){
-                    List<String> InitParams = new ArrayList<>();
-                    List<String> InitParamTypes = new ArrayList<>();
-                    InitParams.add(Ret.PtrReg);
-                    InitParamTypes.add(Ret.Type);
-                    FuncCallInstr NewInit = new FuncCallInstr("call","","void",Ret.Type.substring(0,Ret.Type.length()-1)+"._init",InitParamTypes,InitParams);
-                    CurBlock.InsertInstr(NewInit);
+                Boolean IsBultin = Objects.equals( Ret.Type , "i32") ||Objects.equals( Ret.Type , "_string")||Objects.equals( Ret.Type , "i8");
+                if(!IsBultin) {
+                    String InitReg = Func.NewReg();
+                    String Addi = Func.NewReg();
+                    List<String> MParams = new ArrayList<>();
+                    List<String> MParamTypes = new ArrayList<>();
+                    MParams.add(Addi);
+                    MParamTypes.add(TypeToIRType("int"));
+                    OperationInstr NewAddi = new OperationInstr("add", Integer.toString(TypeSize(Ret.Type) / 8), "0", TypeToIRType("int"), TypeToIRType("int"), Addi, "");
+                    CurBlock.InsertInstr(NewAddi);
+                    FuncCallInstr NewMalloc = new FuncCallInstr("link", Rd, Ret.Type, "malloc", MParamTypes, MParams);
+                    CurBlock.InsertInstr(NewMalloc);
+                    List<String> Params = new ArrayList<>();
+                    List<String> ParamTypes = new ArrayList<>();
+                    Params.add(Rd);
+                    ParamTypes.add(Ret.Type);
+                    FuncCallInstr CallInit = new FuncCallInstr("call", InitReg, "void", Ret.Type + "._init", ParamTypes, Params);
+                    CurBlock.InsertInstr(CallInit);
                 }
-                AddLinking("malloc");
             }
         }
         else if(Root.getType() == ExprType.Par) {
@@ -965,7 +953,7 @@ public class IRBuilder{
             //       --Func.RegCnt;
         }
         else if(Root.getType() == ExprType.Primary){
-            Ret= Left;
+            Ret = Left;
             //       --Func.RegCnt;
         }
         else if(Root.getType() == ExprType.Literal){
@@ -986,26 +974,12 @@ public class IRBuilder{
             }
             else if(Objects.equals(LiteralNode.getLiteralType(),"string")){
                 IRValue NewConstStr = new IRValue();
-                IRValue NewStrHead = new IRValue();
-                NewStrHead.PtrReg =  "_"+"str"+GlobalModule.VarTable.size();
-                NewStrHead.Name = "_"+"str"+GlobalModule.VarTable.size();
-                NewStrHead.Type = TypeToIRType("string");
-                NewConstStr.Name = "_"+"str"+GlobalModule.VarTable.size()+"_contents";
-                NewConstStr.PtrReg = NewStrHead.Name;
-                NewConstStr.Type = TypeToIRType("bool[]");
+                NewConstStr.Name = "_"+"str"+GlobalModule.VarTable.size();
+                NewConstStr.Type = TypeToIRType("string");
                 NewConstStr.Asciz = LiteralNode.getContext().substring(1,LiteralNode.getContext().length()-1);
-                NewStrHead.Word = NewConstStr.Asciz.length();
                 GlobalModule.VarTable.put(NewConstStr.Name,NewConstStr);
-                GlobalModule.VarTable.put(NewStrHead.Name,NewStrHead);
-                String GetRd = Func.NewReg();
-                GetelementInstr NewGet = new GetelementInstr("getelementptr","offset",GetRd, NewConstStr.Type+"*",NewStrHead.Name,NewStrHead.Type,"0",TypeToIRType("int"),4,TypeToIRType("int"),true);
-                StoreInstr NewStrStore = new StoreInstr("store",NewConstStr.Name, NewConstStr.Type,GetRd,NewConstStr.Type+"*",false,true);
-                CurBlock.InsertInstr(NewGet);
-                CurBlock.InsertInstr(NewStrStore);
-                Ret.PtrReg = NewStrHead.PtrReg;
-                Ret.Name = NewStrHead.PtrReg;
+                Ret.Name =  NewConstStr.Name;
                 Ret.Type = TypeToIRType("string");
-                Ret.Word = NewStrHead.Word;
          //       --Func.RegCnt;
             }
             else {
@@ -1030,39 +1004,33 @@ public class IRBuilder{
             //判断是否为 堆上 还是 栈上
             if (!IsSkip) {
                 IRValue Value;
-                if (StackFindValue(CurBlock, LabelNode.getId()) != null) {
-                    Value = StackFindValue(CurBlock, LabelNode.getId());
-                    LoadInstr NewLoad = new LoadInstr("load", Rd, Value.Type, Value.PtrReg, Value.Type + "*", false);
+                String PrePtr;
+                String Ptr;
+                Value = FindValue(CurBlock, LabelNode.getId(),CurModule);
+                PrePtr = FindPtr(CurBlock,LabelNode.getId(),CurModule);
+                if(PrePtr != null) {
+                    if (PrePtr.charAt(0) == '+') {
+                        String ThisPtr = FindPtr(CurBlock, "this", CurModule);
+                        String ThisRd = Func.NewReg();
+                        Ptr = Func.NewReg();
+                        LoadInstr NewThisLoad = new LoadInstr("load", ThisRd, CurModule.Name, ThisPtr, CurModule.Name + "*", false);
+                        GetelementInstr NewGet = new GetelementInstr("getelementptr", "offset", Ptr, Value.Type + "*", ThisRd, CurModule.Name, "0", "i32", Integer.parseInt(PrePtr.substring(1)), "i32", false);
+                        CurBlock.InsertInstr(NewThisLoad);
+                        CurBlock.InsertInstr(NewGet);
+                    } else Ptr = PrePtr;
+                    LoadInstr NewLoad = new LoadInstr("load", Rd, Value.Type, Ptr, Value.Type + "*", false);
                     CurBlock.InsertInstr(NewLoad);
-                    Ret.Type = Value.Type;
-                    Ret.PtrReg = Value.PtrReg;
-                } else {
-
-                    if ((ModuleFindValue(CurModule, LabelNode.getId()) != null) && !Objects.equals(CurModule.Name, "_global")) {
-                        Value = ModuleFindValue(CurModule, LabelNode.getId());
-                        IRValue This = StackFindValue(CurBlock,"this" );
-                        String LoadReg = Func.NewReg();
-
-                        GetelementInstr NewPtr = new GetelementInstr("getelementptr", "offset", Rd, Value.Type, This.PtrReg, This.Type + "*", "0", TypeToIRType("int"), Value.Offset, TypeToIRType("int"), false);
-                        LoadInstr NewLoad = new LoadInstr("load", LoadReg, Value.Type, Rd, Value.Type + "*", false);
-
-                        CurBlock.InsertInstr(NewPtr);
-                        CurBlock.InsertInstr(NewLoad);
-
-                        Ret.Name = LoadReg;
-                        Ret.Type = Value.Type;
-                        Ret.PtrReg =Rd;
-                    } else {
-                        Value = ModuleFindValue(GlobalModule, LabelNode.getId());
-                        LoadInstr NewLoad = new LoadInstr("load", Rd, Value.Type, Value.Name, Value.Type + "*", true);
-                        CurBlock.InsertInstr(NewLoad);
-                        Ret.PtrReg = Value.PtrReg;
-                        Ret.Type = Value.Type;
-                    }
                 }
+                else{
+                    Ptr = LabelNode.getId();
+                    LoadInstr NewLoad = new LoadInstr("load", Rd, Value.Type,Ptr, Value.Type + "*", true);
+                    CurBlock.InsertInstr(NewLoad);
+                }
+                Ret.Type = Value.Type;
+                Ret.Name = Rd;
+                CurBlock.putPtr(Ret.Name,Ptr);
             } else {
                 Ret.Name = LabelNode.getId();
-            //    --Func.RegCnt;
             }
         }
         else if(Root.getType() == ExprType.MemCall) {
@@ -1073,37 +1041,46 @@ public class IRBuilder{
             if (FatherNode != null && FatherNode.getType() == ExprType.FuncCall) {
                 Ret.Name = Left.Name + "." + Right.Name;
                 Ret.Type = Left.Type;
-                Ret.PtrReg = Left.PtrReg;
-            //    --Func.RegCnt;
             }
             else {
                 //Load 出来
-                IRModule TargetModule = null;
                 IRValue LeftClass;
-                if(StackFindValue(CurBlock,Left.Name) != null) LeftClass = StackFindValue(CurBlock,Left.Name);
-                else if(ModuleFindValue(CurModule,Left.Name) != null) LeftClass = ModuleFindValue(CurModule,Left.Name);
-                else if(ModuleFindValue(CurModule,Left.Name) != null)LeftClass = ModuleFindValue(GlobalModule,Left.Name);
-                else LeftClass = Left;
-                for (IRModule Module : ModuleList) {
-                    if (Objects.equals(Module.Name+"*", LeftClass.Type)) {
-                        TargetModule = Module;
-                        break;
-                    }
-                }
+                String ClassPtr;
+                String PrePtr;
+                LeftClass = FindValue(CurBlock,Left.Name,CurModule);
+                if(LeftClass == null) LeftClass = Left;
+                IRModule TargetModule = FindModule(LeftClass.Type);
                 IRValue Value = ModuleFindValue(TargetModule, Right.Name);
-
-                String LoadReg = Func.NewReg();
-                String PtrReg = Func.NewReg();
-                LoadInstr NewLoadPtr = new LoadInstr("load", PtrReg, LeftClass.Type,  LeftClass.PtrReg, LeftClass.Type + "*",false);
-                GetelementInstr NewPtr = new GetelementInstr("getelementptr", "offset", Rd, Value.Type, PtrReg,  LeftClass.Type,  "0", TypeToIRType("int"), Value.Offset, TypeToIRType("int"),!LeftClass.PtrReg.contains("."));
-                LoadInstr NewLoad = new LoadInstr("load", LoadReg, Value.Type, Rd, Value.Type + "*",false);
-                CurBlock.InsertInstr(NewLoadPtr);
-                CurBlock.InsertInstr(NewPtr);
-                CurBlock.InsertInstr(NewLoad);
-
-                Ret.Name = LoadReg;
+                String ValueOffset = ModuleFindPtr(TargetModule, Right.Name);
+                PrePtr = FindPtr(CurBlock,Left.Name,CurModule);
+                String Ptr = Func.NewReg();
+                if(PrePtr != null) {
+                    if (PrePtr.charAt(0) == '+') {
+                        String ThisPtr = FindPtr(CurBlock, "this", CurModule);
+                        String ThisRd = Func.NewReg();
+                        ClassPtr = Func.NewReg();
+                        LoadInstr NewThisLoad = new LoadInstr("load", ThisRd, CurModule.Name, ThisPtr, CurModule.Name + "*", false);
+                        GetelementInstr NewGet = new GetelementInstr("getelementptr", "offset", ClassPtr, LeftClass.Type + "*", ThisRd, CurModule.Name, "0", "i32", Integer.parseInt(PrePtr.substring(1)), "i32", false);
+                        CurBlock.InsertInstr(NewThisLoad);
+                        CurBlock.InsertInstr(NewGet);
+                    } else ClassPtr = PrePtr;
+                    String ClassReg = Func.NewReg();
+                    LoadInstr NewLoadPtr = new LoadInstr("load", ClassReg, LeftClass.Type, ClassPtr, LeftClass.Type + "*", !ClassPtr.contains("."));
+                    GetelementInstr NewGet = new GetelementInstr("getelementptr", "offset", Ptr, Value.Type + "*", ClassReg, LeftClass.Type, "0", "i32", Integer.parseInt(ValueOffset.substring(1)), "i32", false);
+                    LoadInstr NewLoad = new LoadInstr("load", Rd, Value.Type, Ptr, Value.Type + "*", false);
+                    CurBlock.InsertInstr(NewLoadPtr);
+                    CurBlock.InsertInstr(NewGet);
+                    CurBlock.InsertInstr(NewLoad);
+                    CurBlock.putPtr(Rd, Ptr);
+                }
+                else{
+                    GetelementInstr NewGet = new GetelementInstr("getelementptr", "offset", Ptr, Value.Type + "*", LeftClass.Name, LeftClass.Type, "0", "i32", Integer.parseInt(ValueOffset.substring(1)), "i32", false);
+                    LoadInstr NewLoad = new LoadInstr("load", Rd, Value.Type, Ptr, Value.Type + "*", false);
+                    CurBlock.InsertInstr(NewGet);
+                    CurBlock.InsertInstr(NewLoad);
+                }
+                Ret.Name = Rd;
                 Ret.Type = Value.Type;
-                Ret.PtrReg = Rd;
             }
         }
         else if(Root.getType() == ExprType.FuncCall){
@@ -1114,41 +1091,64 @@ public class IRBuilder{
             List<String> ParamTypes = new ArrayList<>();
             List<String> ParamNames = new ArrayList<>();
 
-
-            IRModule TargetModule = null;
-            Integer Index = Left.Name.lastIndexOf('.');
+            IRModule TargetModule;
+            int Index = Left.Name.lastIndexOf('.');
             String FuncName = Left.Name.substring(Index+1);
-            Boolean IsSize = false;
+            boolean IsSize = false;
                 if (Index == -1) {
-                    if (FindFunc(CurModule, FuncName) != null) TargetModule = CurModule;
+                    if (FindFunc(CurModule, FuncName) != null) {
+                        TargetModule = CurModule;
+                        ParamTypes.add(TargetModule.Name);
+                        String Ptr = FindPtr(CurBlock,"this",CurModule);
+                        String PtrRd = Func.NewReg();
+                        LoadInstr GetClass = new LoadInstr("load",PtrRd,TargetModule.Name,Ptr,TargetModule.Name+"*",false);
+                        ParamNames.add(PtrRd);
+                        CurBlock.InsertInstr(GetClass);
+                    }
                     else TargetModule = GlobalModule;
                 } else {
                     IRValue LeftClass;
+                    String ClassPtr;
                     String ClassValueName = Left.Name.substring(0, Index);
-                    if (StackFindValue(CurBlock, ClassValueName) != null)
-                        LeftClass = StackFindValue(CurBlock, ClassValueName);
-                    else if (ModuleFindValue(CurModule, ClassValueName) != null)
-                        LeftClass = ModuleFindValue(CurModule, ClassValueName);
-                    else LeftClass = Left;
+                    LeftClass = FindValue(CurBlock,ClassValueName,CurModule);
+                    if(LeftClass == null){
+                        LeftClass = new IRValue();
+                        LeftClass.Name  = ClassValueName;
+                        LeftClass.Type = Left.Type;
+                    }
+                    ClassPtr = FindPtr(CurBlock,ClassValueName,CurModule);
+                    TargetModule = FindModule(LeftClass.Type);
                     if(FuncName.equals("size") && LeftClass.Type.contains("*")){
                         Ret.Type = TypeToIRType("int");
                         Ret.Name = Rd;
                         String PtrReg = Func.NewReg();
-                        LoadInstr GetPtr = new LoadInstr("load",PtrReg,LeftClass.Type,LeftClass.PtrReg,LeftClass.Type+"*",!LeftClass.PtrReg.contains("."));
+                        LoadInstr GetPtr = new LoadInstr("load",PtrReg,LeftClass.Type,ClassPtr,LeftClass.Type+"*",!ClassPtr.contains("."));
                         LoadInstr GetSize = new LoadInstr("load",Ret.Name,TypeToIRType("int"),PtrReg,LeftClass.Type,false);
                         CurBlock.InsertInstr(GetPtr);
                         CurBlock.InsertInstr(GetSize);
-                        Ret.PtrReg = PtrReg;
                         IsSize = true;
                     }
                     else {
-                        for (IRModule Module : ModuleList)
-                            if (Objects.equals(Module.Name + "*", LeftClass.Type) || (Objects.equals(Module.Name, "_string") && Objects.equals(LeftClass.Type, "_string"))) {
-                                TargetModule = Module;
-                                break;
-                            }
                         ParamTypes.add(LeftClass.Type);
-                        ParamNames.add(LeftClass.PtrReg);
+                        String Ptr;
+                        String PrePtr  = FindPtr(CurBlock,LeftClass.Name,CurModule);
+                        String PtrRd = Func.NewReg();
+                        if(PrePtr != null) {
+                            if (PrePtr.charAt(0) == '+') {
+                                String ThisPtr = FindPtr(CurBlock, "this", CurModule);
+                                String ThisRd = Func.NewReg();
+                                Ptr = Func.NewReg();
+                                LoadInstr NewThisLoad = new LoadInstr("load", ThisRd, CurModule.Name, ThisPtr, CurModule.Name + "*", false);
+                                GetelementInstr NewGet = new GetelementInstr("getelementptr", "offset", ClassPtr, LeftClass.Type + "*", ThisRd, CurModule.Name, "0", "i32", Integer.parseInt(PrePtr.substring(1)), "i32", false);
+                                CurBlock.InsertInstr(NewThisLoad);
+                                CurBlock.InsertInstr(NewGet);
+                            }
+                            else Ptr = PrePtr;
+                            LoadInstr GetClass = new LoadInstr("load", PtrRd, LeftClass.Type, Ptr, LeftClass.Type + "*", !Ptr.contains("."));
+                            ParamNames.add(PtrRd);
+                            CurBlock.InsertInstr(GetClass);
+                        }
+                        else ParamNames.add(LeftClass.Name);
                     }
                 }
                 for (IRValue value : Params) {
@@ -1168,25 +1168,19 @@ public class IRBuilder{
                         CurBlock.InsertInstr(FuncCall);
                     }
                     Ret.Type = CallFunc.RetType;
-                    Ret.PtrReg = Ret.Name;
                 }
         }
         else if(Root.getType() == ExprType.Index){
             //TODO 补个Load，然后返回的Ptr修改 √
-            if(Left.Type.lastIndexOf("*") != -1){
-                if(Left.Type.indexOf("*") == Left.Type.lastIndexOf("*") && (Left.Type.charAt(0)!='i')) Ret.Type = Left.Type;
-                else Ret.Type = Left.Type.substring(0,Left.Type.lastIndexOf("*"));
-
-            }
-            else Ret.Type = Left.Type;
-
-            String PtrReg = Rd;
-            Ret.PtrReg = PtrReg;
-            Ret.Name = CurFunc.NewReg();
-            GetelementInstr NewPtr = new GetelementInstr("getelementptr","index",PtrReg,Ret.Type,Left.Name,Left.Type,Right.Name,Right.Type,0,"",!Left.Name.contains("."));
-            LoadInstr NewLoad = new LoadInstr("load",Ret.Name,Ret.Type,PtrReg,Left.Type,false);
+            Ret.Type = Left.Type.substring(0,Left.Type.lastIndexOf("*"));
+            Ret.Name = Rd;
+            String Ptr = Func.NewReg();
+            GetelementInstr NewPtr = new GetelementInstr("getelementptr","index",Ptr,Left.Type,Left.Name,Left.Type,Right.Name,Right.Type,0,"",!Left.Name.contains("."));
+            LoadInstr NewLoad = new LoadInstr("load",Ret.Name,Ret.Type,Ptr,Left.Type,false);
             CurBlock.InsertInstr(NewPtr);
             CurBlock.InsertInstr(NewLoad);
+            IRValue NewTemp = new IRValue();
+            CurBlock.putPtr(Ret.Name,Ptr);
         }
         else if(Root.getType() == ExprType.Negative){
             Ret.Type = Left.Type;
@@ -1194,27 +1188,27 @@ public class IRBuilder{
             CurBlock.InsertInstr(NewOp);
         }
         else if(Root.getType() == ExprType.LeftSelfPlus){
-            Boolean isGlobal = !Left.PtrReg.contains(".");
+            Boolean isGlobal = !Left.Name.contains(".");
             Ret.Type = Left.Type;
             String LoadReg =  Rd;
             Rd = Func.NewReg();
             Ret.Name = Rd;
-            LoadInstr NewLoad = new LoadInstr("load",LoadReg,Ret.Type,Left.PtrReg,Left.Type+"*",isGlobal);
+            LoadInstr NewLoad = new LoadInstr("load",LoadReg,Ret.Type,Left.Name,Left.Type+"*",isGlobal);
             OperationInstr NewOp = new OperationInstr("add",LoadReg,"1",Left.Type,TypeToIRType("int"),Rd,"");
-            StoreInstr NewStore = new StoreInstr("store",Rd,Left.Type,Left.PtrReg,Left.Type+"*",isGlobal,false);
+            StoreInstr NewStore = new StoreInstr("store",Rd,Left.Type,Left.Name,Left.Type+"*",isGlobal,false);
             CurBlock.InsertInstr(NewLoad);
             CurBlock.InsertInstr(NewOp);
             CurBlock.InsertInstr(NewStore);
         }
         else if(Root.getType() == ExprType.LeftSelfMinus){
-            Boolean isGlobal = !Left.PtrReg.contains(".");
+            Boolean isGlobal = !Left.Name.contains(".");
             Ret.Type = Left.Type;
             String LoadReg =  Rd;
             Rd =Func.NewReg();
             Ret.Name = Rd;;
-            LoadInstr NewLoad = new LoadInstr("load",LoadReg,Left.Name,Left.PtrReg,Left.Type+"*",isGlobal);
+            LoadInstr NewLoad = new LoadInstr("load",LoadReg,Left.Name,Left.Name,Left.Type+"*",isGlobal);
             OperationInstr NewOp = new OperationInstr("sub",LoadReg,"1",Left.Type,TypeToIRType("int"),Rd,"");
-            StoreInstr NewStore = new StoreInstr("store",Rd,Left.Type,Left.PtrReg,Left.Type+"*",isGlobal,false);
+            StoreInstr NewStore = new StoreInstr("store",Rd,Left.Type,Left.Name,Left.Type+"*",isGlobal,false);
             CurBlock.InsertInstr(NewLoad);
             CurBlock.InsertInstr(NewOp);
             CurBlock.InsertInstr(NewStore);
@@ -1240,23 +1234,23 @@ public class IRBuilder{
 
         }
         else if(Root.getType() == ExprType.RightSelfPlus){
-            Boolean isGlobal = !Left.PtrReg.contains(".");
+            Boolean isGlobal = !Left.Name.contains(".");
             Ret.Type = Left.Type;
             String AddReg =  Func.NewReg();
-            LoadInstr NewLoad = new LoadInstr("load",Ret.Name,Ret.Type,Left.PtrReg,Left.Type+"*",isGlobal);
+            LoadInstr NewLoad = new LoadInstr("load",Ret.Name,Ret.Type,Left.Name,Left.Type+"*",isGlobal);
             OperationInstr NewOp = new OperationInstr("add",Ret.Name,"1",Left.Type,TypeToIRType("int"),AddReg,"");
-            StoreInstr NewStore = new StoreInstr("store",AddReg,Left.Type,Left.PtrReg,Left.Type+"*",isGlobal,false);
+            StoreInstr NewStore = new StoreInstr("store",AddReg,Left.Type,Left.Name,Left.Type+"*",isGlobal,false);
             CurBlock.InsertInstr(NewLoad);
             CurBlock.InsertInstr(NewOp);
             CurBlock.InsertInstr(NewStore);
         }
         else if(Root.getType() == ExprType.RightSelfMinus){
-            Boolean isGlobal = !Left.PtrReg.contains(".");
+            Boolean isGlobal = !Left.Name.contains(".");
             Ret.Type = Left.Type;
             String AddReg = Func.NewReg();
-            LoadInstr NewLoad = new LoadInstr("load",Ret.Name,Ret.Type,Left.PtrReg,Left.Type+"*",isGlobal);
+            LoadInstr NewLoad = new LoadInstr("load",Ret.Name,Ret.Type,Left.Name,Left.Type+"*",isGlobal);
             OperationInstr NewOp = new OperationInstr("sub",Ret.Name,"1",Left.Type,TypeToIRType("int"),AddReg,"");
-            StoreInstr NewStore = new StoreInstr("store",AddReg,Left.Type,Left.PtrReg,Left.Type+"*",isGlobal,false);
+            StoreInstr NewStore = new StoreInstr("store",AddReg,Left.Type,Left.Name,Left.Type+"*",isGlobal,false);
             CurBlock.InsertInstr(NewLoad);
             CurBlock.InsertInstr(NewOp);
             CurBlock.InsertInstr(NewStore);
@@ -1283,11 +1277,10 @@ public class IRBuilder{
                 CurBlock.InsertInstr(NewOp);
             }else{
                 Ret.Type = Left.Type;
-                Ret.PtrReg = Rd;
                 List<String> Params = new ArrayList<>();
                 List<String> ParamTypes = new ArrayList<>();
-                Params.add(Left.PtrReg);
-                Params.add(Right.PtrReg);
+                Params.add(Left.Name);
+                Params.add(Right.Name);
                 ParamTypes.add(Left.Type);
                 ParamTypes.add(Right.Type);
                 FuncCallInstr NewLink = new FuncCallInstr("link",Ret.Name,Ret.Type,"append",ParamTypes,Params);
@@ -1321,8 +1314,8 @@ public class IRBuilder{
                 String FuncRet = Func.NewReg();
                 List<String> Params = new ArrayList<>();
                 List<String> ParamTypes = new ArrayList<>();
-                Params.add(Left.PtrReg);
-                Params.add(Right.PtrReg);
+                Params.add(Left.Name);
+                Params.add(Right.Name);
                 ParamTypes.add(Left.Type);
                 ParamTypes.add(Right.Type);
                 FuncCallInstr NewLink = new FuncCallInstr("link",FuncRet,TypeToIRType("int"),"strcomp",ParamTypes,Params);
@@ -1342,8 +1335,8 @@ public class IRBuilder{
                 String FuncRet = Func.NewReg();
                 List<String> Params = new ArrayList<>();
                 List<String> ParamTypes = new ArrayList<>();
-                Params.add(Left.PtrReg);
-                Params.add(Right.PtrReg);
+                Params.add(Left.Name);
+                Params.add(Right.Name);
                 ParamTypes.add(Left.Type);
                 ParamTypes.add(Right.Type);
                 FuncCallInstr NewLink = new FuncCallInstr("link",FuncRet,TypeToIRType("int"),"strcomp",ParamTypes,Params);
@@ -1363,8 +1356,8 @@ public class IRBuilder{
                 String FuncRet = Func.NewReg();
                 List<String> Params = new ArrayList<>();
                 List<String> ParamTypes = new ArrayList<>();
-                Params.add(Left.PtrReg);
-                Params.add(Right.PtrReg);
+                Params.add(Left.Name);
+                Params.add(Right.Name);
                 ParamTypes.add(Left.Type);
                 ParamTypes.add(Right.Type);
                 FuncCallInstr NewLink = new FuncCallInstr("link",FuncRet,TypeToIRType("int"),"strcomp",ParamTypes,Params);
@@ -1384,8 +1377,8 @@ public class IRBuilder{
                 String FuncRet = Func.NewReg();
                 List<String> Params = new ArrayList<>();
                 List<String> ParamTypes = new ArrayList<>();
-                Params.add(Left.PtrReg);
-                Params.add(Right.PtrReg);
+                Params.add(Left.Name);
+                Params.add(Right.Name);
                 ParamTypes.add(Left.Type);
                 ParamTypes.add(Right.Type);
                 FuncCallInstr NewLink = new FuncCallInstr("link",FuncRet,TypeToIRType("int"),"strcomp",ParamTypes,Params);
@@ -1405,8 +1398,8 @@ public class IRBuilder{
                 String FuncRet = Func.NewReg();
                 List<String> Params = new ArrayList<>();
                 List<String> ParamTypes = new ArrayList<>();
-                Params.add(Left.PtrReg);
-                Params.add(Right.PtrReg);
+                Params.add(Left.Name);
+                Params.add(Right.Name);
                 ParamTypes.add(Left.Type);
                 ParamTypes.add(Right.Type);
                 FuncCallInstr NewLink = new FuncCallInstr("link",FuncRet,TypeToIRType("int"),"strcomp",ParamTypes,Params);
@@ -1430,8 +1423,8 @@ public class IRBuilder{
                 String FuncRet = Func.NewReg();
                 List<String> Params = new ArrayList<>();
                 List<String> ParamTypes = new ArrayList<>();
-                Params.add(Left.PtrReg);
-                Params.add(Right.PtrReg);
+                Params.add(Left.Name);
+                Params.add(Right.Name);
                 ParamTypes.add(Left.Type);
                 ParamTypes.add(Right.Type);
                 FuncCallInstr NewLink = new FuncCallInstr("link",FuncRet,TypeToIRType("int"),"strcomp",ParamTypes,Params);
@@ -1466,26 +1459,24 @@ public class IRBuilder{
 
             IRBlock SucceedBlock = new IRBlock(BlockType.Basic,"Succeed",BlockNum++);
             CurBlock.InsertSubBlock(SucceedBlock);
-            PhiInstr NewPhiStart = new PhiInstr("phi","start", Rd,  PhiLeft.Type);
-            PhiInstr NewPhiEnd = new PhiInstr("phi","end", Rd,   PhiLeft.Type);
-            BranchInstr PreceedJump = new BranchInstr("br",Phi.Label,SucceedBlock.Label, Rd);
+            BranchInstr PreceedJump = new BranchInstr("br",Phi.Label,SucceedBlock.Label, PhiLeft.Name);
             BranchInstr PhiJump = new BranchInstr("br",SucceedBlock.Label,"", "");
 
             SucceedBlock.EndInstr = CurBlock.EndInstr;
             CurBlock.EndInstr = PreceedJump;
-            CurBlock.VarInstrList.add(NewPhiStart);
+        //    CurBlock.VarInstrList.add(NewPhiStart);
             Phi.EndInstr = PhiJump;
-            SucceedBlock.VarInstrList.add(NewPhiEnd);
+        //    SucceedBlock.VarInstrList.add(NewPhiEnd);
 
             IRBlock PreBlock = CurBlock;
             CurBlock = Phi;
-            IRValue PhiRight = ExprToInstr(Func,Root.getRightSonExpr(),Rd);
+            IRValue PhiRight = ExprToInstr(Func,Root.getRightSonExpr(),"");
             CurBlock = PreBlock;
 
-            OperationInstr NewOp = new OperationInstr("and",PhiLeft.Name,PhiRight.Name,PhiLeft.Type,PhiRight.Type, Rd,"");
+            OperationInstr NewOp = new OperationInstr("and",PhiLeft.Name,PhiRight.Name,PhiLeft.Type,PhiRight.Type,PhiLeft.Name,"");
             Phi.VarInstrList.add(NewOp);
 
-            Ret.Name = Rd;
+            Ret.Name = PhiLeft.Name;
             Ret.Type = PhiLeft.Type;
             CurBlock = SucceedBlock;
         }
@@ -1498,52 +1489,45 @@ public class IRBuilder{
             IRBlock SucceedBlock = new IRBlock(BlockType.Basic,"Succeed",BlockNum++);
             CurBlock.InsertSubBlock(SucceedBlock);
 
-            PhiInstr NewPhiStart = new PhiInstr("phi","start", Rd,  PhiLeft.Type);
-            PhiInstr NewPhiEnd = new PhiInstr("phi","end", Rd,   PhiLeft.Type);
-            BranchInstr PreceedJump = new BranchInstr("br",SucceedBlock.Label,Phi.Label, Rd);
+            BranchInstr PreceedJump = new BranchInstr("br",SucceedBlock.Label,Phi.Label,PhiLeft.Name);
             BranchInstr PhiJump = new BranchInstr("br",SucceedBlock.Label,"", "");
 
             SucceedBlock.EndInstr = CurBlock.EndInstr;
             CurBlock.EndInstr = PreceedJump;
-            CurBlock.VarInstrList.add(NewPhiStart);
 
             Phi.EndInstr = PhiJump;
-            SucceedBlock.VarInstrList.add(NewPhiEnd);
 
             IRBlock PreBlock = CurBlock;
             CurBlock = Phi;
-            IRValue PhiRight = ExprToInstr(Func,Root.getRightSonExpr(), Rd);
+            IRValue PhiRight = ExprToInstr(Func,Root.getRightSonExpr(),"");
             CurBlock = PreBlock;
 
-            OperationInstr NewOp = new OperationInstr("or",PhiLeft.Name,PhiRight.Name,PhiLeft.Type,PhiRight.Type,Rd,"");
-
+            OperationInstr NewOp = new OperationInstr("or",PhiLeft.Name,PhiRight.Name,PhiLeft.Type,PhiRight.Type,PhiLeft.Name,"");
 
             Phi.VarInstrList.add(NewOp);
 
-            Ret.Name = Rd;
+            Ret.Name = PhiLeft.Name;
             Ret.Type = PhiLeft.Type;
             CurBlock = SucceedBlock;
         }
         else if(Root.getType() == ExprType.Assign){
             //TODO String 的赋值操作 有两种
-            if(!Objects.equals(Left.Type, "_string*")) {
-                Boolean isGlobal = !Left.PtrReg.contains(".");
+            if(!Objects.equals(Left.Type, "_string")) {
+                String Ptr = FindPtr(CurBlock,Left.Name,CurModule);
                 Ret = Left;
-                //        --Func.RegCnt;
-                    StoreInstr NewStore = new StoreInstr("store", Right.Name, Right.Type, Left.PtrReg, Right.Type + "*", isGlobal,!Right.Name.contains("."));
-                    CurBlock.InsertInstr(NewStore);
+                if(Ptr ==null) Ptr = Left.Name;
+                StoreInstr NewStore = new StoreInstr("store", Right.Name, Right.Type, Ptr, Left.Type + "*", !Ptr.contains("."),!Right.Name.contains("."));
+                CurBlock.InsertInstr(NewStore);
             }
             else{
-                Ret.Type = Left.Type+"*";
-                Ret.PtrReg = Rd;
+                String Ptr = FindPtr(CurBlock,Left.Name,CurModule);
+                Ret.Type = Left.Type;
                 List<String> Params = new ArrayList<>();
                 List<String> ParamTypes = new ArrayList<>();
-                Params.add(Left.PtrReg);
-                Params.add(Right.PtrReg);
-                ParamTypes.add(Left.Type+"*");
-                ParamTypes.add(Right.Type+"*");
+                Params.add(Right.Name);
+                ParamTypes.add(Right.Type);
                 FuncCallInstr NewLink = new FuncCallInstr("link",Ret.Name,Ret.Type,"strcopy",ParamTypes,Params);
-                StoreInstr NewStore = new StoreInstr("store", Ret.Name, Left.Type, Left.PtrReg, Left.Type + "*", !Left.PtrReg.contains("."),false);
+                StoreInstr NewStore = new StoreInstr("store", Ret.Name, Left.Type, Ptr , Left.Type + "*", !Ptr.contains("."),false);
                 CurBlock.InsertInstr(NewLink);
                 CurBlock.InsertInstr(NewStore);
             }

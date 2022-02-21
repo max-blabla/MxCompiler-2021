@@ -14,7 +14,6 @@ import java.util.HashMap;
 
 public class IRBlock{
     String Label;
-   // List<IRInstrPair> ExprInstrList = new ArrayList<>();
     List<BaseInstr> VarInstrList = new ArrayList<>();
     BaseInstr EndInstr;
     //变量名到
@@ -23,6 +22,7 @@ public class IRBlock{
     Boolean IsShut;
     IRBlock Father;
     List<IRBlock>  SubBlocks;
+    HashMap<String,String> PtrTable;
     IRBlock(BlockType Type,String label, Integer BlockNum){
         SubBlocks = new ArrayList<>();
         VarList = new HashMap<>();
@@ -30,7 +30,15 @@ public class IRBlock{
         blockType = Type;
         IsShut = false;
         Label = label + BlockNum;
+        PtrTable = new HashMap<>();
       //  EndInstr = endInstr;
+    }
+    String getPtr(String Name){
+        return PtrTable.get(Name);
+    }
+
+    void putPtr(String Name,String Ptr){
+        PtrTable.put(Name,Ptr);
     }
     public void ShutBlock(){
         IsShut = true;

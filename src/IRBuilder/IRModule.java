@@ -9,11 +9,13 @@ import java.util.Map.Entry;
 public class IRModule{
     String Name;
     HashMap<String, IRValue> VarTable;
+    HashMap<String,String> PtrTable;
     List<IRFunc> FuncSet;
     Boolean IsUsed;
     Integer Size;
     public IRModule(){
         VarTable = new HashMap<>();
+        PtrTable = new HashMap<>();
         FuncSet = new ArrayList<>();
         Size = 0 ;
     }
@@ -33,8 +35,14 @@ public class IRModule{
         for(IRFunc Func:FuncSet) if(Objects.equals(Func.FuncName, FuncName)) return Func;
         return null;
     }
-    public IRValue FindValue(String FuncName){
-        return VarTable.getOrDefault(FuncName, null);
+    public IRValue FindValue(String Name){
+        return VarTable.getOrDefault(Name, null);
+    }
+    public String GetPtr(String Name){
+        return PtrTable.getOrDefault(Name, null);
+    }
+    public void SetPtr(String Name,String Ptr){
+        PtrTable.put(Name,Ptr);
     }
     public void Output(FileWriter Writer) throws IOException {
         if(Objects.equals(this.Name, "_global")){
