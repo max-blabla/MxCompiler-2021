@@ -1096,7 +1096,7 @@ public class IRBuilder {
             String FuncName = Left.Name.substring(Index+1);
             boolean IsSize = false;
                 if (Index == -1) {
-                    if (CurModule.FindFunc(FuncName) != null) {
+                    if (CurModule.FindFunc(CurModule.getName()+"."+FuncName) != null) {
                         TargetModule = CurModule;
                         if(CurModule != GlobalModule) {
                             ParamTypes.add(TargetModule.Name);
