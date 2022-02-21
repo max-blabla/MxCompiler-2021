@@ -13,44 +13,23 @@ program
     ;*/
 
 
-
 definition
     :   funcDef
     |   varDef Semi*
     |   classDef Semi*
     ;
 
-
-
-
 funcDef
-    :   returnType Identifier LeftParenthes parameterList RightParenthes suite
+    :   returnType? id LeftParenthes parameterList RightParenthes suite
     ;
 
-conFuncDef
-    : Identifier LeftParenthes parameterList RightParenthes suite
-    ;
-
-memberFuncDef
-    :   funcDef
-    ;
-
-memberVarDef
-    : varDef
-    ;
-
-memberDefinition
-    :   conFuncDef
-    |   memberFuncDef
-    |   memberVarDef Semi*
-    ;
 
 classSpace
-    :   LeftBrace memberDefinition* RightBrace
+    :   LeftBrace definition* RightBrace
     ;
 
 classDef
-    :   Class Identifier classSpace
+    :   Class id classSpace
     ;
 
 varDef
@@ -58,11 +37,11 @@ varDef
     ;
 
 varDeclaration
-    : Identifier (Assign expression)?
+    : id (Assign expression)?
     ;
 
 parameterList
-    :   (type Identifier (Comma type Identifier)*)? ;
+    : (varDef (Comma varDef)*)? ;
 
 expressionList
     : (expression (Comma expression)*)?;
@@ -72,21 +51,16 @@ suite
     ;
 
 ifStatement
-    : If LeftParenthes condition RightParenthes trueStmt = statement
+    : If LeftParenthes condition RightParenthes trueStmt = statement (Else falseStmt = statement)?
     ;
 
-elseStatement
-    : Else falseStmt = statement
-    ;
 
-ifElseStatement
-    :  ifStatement//if Stmt
-       elseStatement?
+forInit
+    : (expression|varDef)?
     ;
-
 
 forStatement
-    : For LeftParenthes (expStatement|varDef)? Semi condition? Semi expStatement? RightParenthes statement
+    : For LeftParenthes forInit Semi condition? Semi incr = expression? RightParenthes statement
     ;
 
 whileStatement
@@ -102,70 +76,60 @@ jumpStatement
     | Continue
     ;
 
-expStatement
-    : expression
+varStatement
+    :  varDef Semi
     ;
+
+exprStatement
+    :  expression Semi
+    ;
+
 
 
 statement
     :   suite  //block
-    |   varDef Semi//varDef
-    |   ifElseStatement
+    |   varStatement//varDef
+    |   ifStatement
     |   forStatement
     |   whileStatement
     |   returnStatement Semi    //return Stmt
-    |   expStatement Semi //pure exp
+    |   exprStatement //pure exp
     |   jumpStatement Semi
     |   Semi   //empty Stmt
     ;
 
 lambdaExpression
-    : LeftBracket And RightBracket LeftParenthes parameterList RightParenthes RightArrow suite //lambda
-    ;
-
-newSingle
-    :  New singleType (LeftParenthes RightParenthes)? //new Expr
+    : LeftBracket And RightBracket (LeftParenthes parameterList RightParenthes)? RightArrow suite LeftParenthes expressionList RightParenthes //lambda
     ;
 
 newErrorArray
-    : New singleType (LeftBracket expression RightBracket)+(LeftBracket RightBracket)+(LeftBracket expression RightBracket)+
+    : New singleType (LeftBracket expression RightBracket)*(LeftBracket RightBracket)+(LeftBracket expression RightBracket)+
     ;
 
-newArrayExp
-    : (LeftBracket expression RightBracket)+(LeftBracket RightBracket)*
+newType
+    :  New singleType((LeftParenthes RightParenthes) |(LeftBracket expression RightBracket)*(LeftBracket RightBracket)*)//newArrayExpr
     ;
 
-newArray
-    :  New singleType newArrayExp//newArrayExpr
-    ;
-
-indexExpr
-    : (LeftBracket expression RightBracket)+
-    ;
-
-funcExpr
-    :  LeftParenthes expressionList RightParenthes
-    ;
 
 condition
     : expression
     ;
 
-leftSelfExprssion
-    : op=('+'|'-') expression // unaryExpr
-    | op=('++'|'--') expression
-    | op='!' expression
-    | op='~' expression
+indexExpr
+    : LeftBracket expression RightBracket
     ;
 
 expression
     :   primary
     |   lambdaExpression
-    |   expression  indexExpr//indexExpr []
-    |   expression  funcExpr// functionExpr ()
     |   expression op='.' expression //memExpr
-    |   leftSelfExprssion
-    |   <assoc = right> expression op=('++'|'--')  //unaryExpr
+    |   expression  LeftParenthes expressionList RightParenthes// functionExpr ()
+    |   expression  indexExpr//indexExpr []
+    |   op=('+'|'-') expression // unaryExpr
+    |   op=('++'|'--') expression // unaryExpr
+    |   op='!' expression // unaryExpr
+    |   op='~' expression // unaryExpr
+    |   <assoc = right> expression rop=('++'|'--')  //unaryExpr
     |   expression op=('*'|'/'|'%') expression //binaryExpr
     |   expression op=('+'|'-') expression //binaryExpr
     |   expression op=('<<'|'>>') expression //binaryExpr
@@ -179,29 +143,25 @@ expression
     |   <assoc = right> expression op='=' expression //assignExpr
     ;
 
-
-
-
 parenthes
     : LeftParenthes expression RightParenthes
     ;
 
 label
-    :  Identifier
+    :  id
     |  This
     ;
 
 primary
     :   parenthes
     |   label
-    |  newErrorArray
-    |   newArray
-    |   newSingle
+    |   newErrorArray
+    |   newType
     |   literal
     ;
 
 literal
-    : literalType = (Integer|StringConst|Numeric|True| False|Null)
+    : literalType = (Integer|Numeric|True|False|Null|StringConst)
     ;
 
 
@@ -210,13 +170,19 @@ returnType
     |   type
     ;
 
+
+
 singleType
     : builtinType
-    | Identifier
+    | id
     ;
 
 type
     :   singleType (LeftBracket RightBracket)*
+    ;
+
+id
+    : Identifier
     ;
 
 builtinType
@@ -319,7 +285,7 @@ DbQuotation:'\\"';
 
 Identifier  : (UCLTR|LCLTR) (DIGIT|UCLTR|LCLTR|UNDERLINE)*;
 StringConst : Quot (BackSlash|DbQuotation|.)*? Quot;
-Integer : ZERO|[1-9] DIGIT*;
+Integer :   ZERO|[1-9] DIGIT*;
 Numeric : Integer Dot DIGIT+;
 
 
