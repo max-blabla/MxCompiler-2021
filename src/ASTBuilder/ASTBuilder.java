@@ -5,6 +5,7 @@ import MxParser.MxParser;
 
 import java.util.List;
 import java.util.Objects;
+import ASTNode.ErrorInfo;
 
 //首先要有一个类型表
 public class ASTBuilder extends MxBaseListener{
@@ -27,7 +28,7 @@ public class ASTBuilder extends MxBaseListener{
         CurASTNode.InsertSon(NewDef);
         CurASTNode = NewDef;
         if(ctx.returnType() == null){
-            TypeAST NewType = new TypeAST("void");
+            TypeAST NewType = new TypeAST(".construction");
             CurASTNode.InsertSon(NewType);
         }
     }
@@ -106,6 +107,12 @@ public class ASTBuilder extends MxBaseListener{
         ConditionAST Condition = new ConditionAST();
         CurASTNode.InsertSon(Condition);
         CurASTNode = Condition;
+    }
+
+    @Override
+    public void enterNewErrorArray(MxParser.NewErrorArrayContext ctx){
+        new ErrorInfo("Wrong Array Declare");
+        throw new RuntimeException();
     }
 
     @Override
@@ -281,7 +288,7 @@ public class ASTBuilder extends MxBaseListener{
         String Context  = ctx.getText();
         String LiteralType;
         if(Objects.equals(Context, "true") || Objects.equals(Context, "false")) LiteralType = "bool";
-        else if(Objects.equals(Context, "null")) LiteralType = "auto";
+        else if(Objects.equals(Context, "null")) LiteralType = "null";
         else if(Context.charAt(0)<='9' && Context.charAt(0) >= '0') LiteralType = "int";
         else LiteralType = "string";
         LiteralAST NewLiteral = new LiteralAST(LiteralType,Context);

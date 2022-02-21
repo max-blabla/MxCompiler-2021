@@ -13,6 +13,8 @@ public class BlockSection {
         BlockLable = Lable;
         CodeList = new ArrayDeque<>();
     }
+
+
     public void Output(PrintStream Stream){
         if(!Objects.equals(BlockLable, "")) Stream.println(BlockLable+":");
         for(BaseCode Code : CodeList) Code.Output(Stream);

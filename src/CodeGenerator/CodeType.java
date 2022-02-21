@@ -9,5 +9,6 @@ enum CodeType {
     RType,
     UType,
     MType,
-    CType
+    CType,
+    PType;
 }

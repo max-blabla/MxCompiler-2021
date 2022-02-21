@@ -3,14 +3,19 @@ package ASTNode;
 import java.util.ArrayList;
 import java.util.List;
 
-public class LambdaExprAST extends BaseAST{
+public class LambdaExprAST extends ExprAST{
     ParamListAST ParamList;
     SuiteAST FuncSuite;
     ExprListAST ExprList;
 
     public LambdaExprAST(){
+        super(ExprType.Lambda);
         ParamList = null;
         ExprList = null;
+    }
+
+    public List<VarDeclAST> getParamList(){
+        return ParamList.ParamTypeList;
     }
 
     @Override
