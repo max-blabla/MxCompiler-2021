@@ -1,4 +1,5 @@
 	.text
+
 	.globl	toString                # -- Begin function toString
 toString:                               # @toString
 	.cfi_startproc
@@ -12,25 +13,20 @@ toString:                               # @toString
 	addi	s0, sp, 16
 	.cfi_def_cfa s0, 0
 	sw	a0, -12(s0)
-	addi	a0, zero, 16
+	addi	a0, zero, 12
 	mv	a1, zero
 	call	malloc
 	sw	a0, -16(s0)
 	lw	a0, -16(s0)
-	lw	a0, 4(a0)
 	lw	a2, -12(s0)
 	lui	a1, %hi(.L.str)
 	addi	a1, a1, %lo(.L.str)
 	call	sprintf
 	lw	a0, -16(s0)
-	lw	a0, 4(a0)
-	sb	zero, 14(a0)
-	lw	a0, -16(s0)
 	lw	s0, 8(sp)
 	lw	ra, 12(sp)
 	addi	sp, sp, 16
 	ret
-
 
 	.globl	print                   # -- Begin function print
 print:                                  # @print
@@ -45,8 +41,7 @@ print:                                  # @print
 	addi	s0, sp, 16
 	.cfi_def_cfa s0, 0
 	sw	a0, -16(s0)
-	lw	a0, -16(s0)
-	lw	a1, 4(a0)
+	lw	a1, -16(s0)
 	lui	a0, %hi(.L.str.1)
 	addi	a0, a0, %lo(.L.str.1)
 	call	printf
@@ -54,7 +49,6 @@ print:                                  # @print
 	lw	ra, 12(sp)
 	addi	sp, sp, 16
 	ret
-
 
 	.globl	println                 # -- Begin function println
 println:                                # @println
@@ -69,8 +63,7 @@ println:                                # @println
 	addi	s0, sp, 16
 	.cfi_def_cfa s0, 0
 	sw	a0, -16(s0)
-	lw	a0, -16(s0)
-	lw	a1, 4(a0)
+	lw	a1, -16(s0)
 	lui	a0, %hi(.L.str.2)
 	addi	a0, a0, %lo(.L.str.2)
 	call	printf
@@ -78,7 +71,6 @@ println:                                # @println
 	lw	ra, 12(sp)
 	addi	sp, sp, 16
 	ret
-
 
 	.globl	printInt                # -- Begin function printInt
 printInt:                               # @printInt
@@ -102,7 +94,6 @@ printInt:                               # @printInt
 	addi	sp, sp, 16
 	ret
 
-
 	.globl	printlnInt              # -- Begin function printlnInt
 printlnInt:                             # @printlnInt
 	.cfi_startproc
@@ -125,7 +116,6 @@ printlnInt:                             # @printlnInt
 	addi	sp, sp, 16
 	ret
 
-
 	.globl	getString               # -- Begin function getString
 getString:                              # @getString
 	.cfi_startproc
@@ -138,26 +128,19 @@ getString:                              # @getString
 	.cfi_offset s0, -8
 	addi	s0, sp, 16
 	.cfi_def_cfa s0, 0
-	addi	a0, zero, 261
+	addi	a0, zero, 257
 	mv	a1, zero
 	call	malloc
 	sw	a0, -16(s0)
-	lw	a0, -16(s0)
-	lw	a1, 4(a0)
+	lw	a1, -16(s0)
 	lui	a0, %hi(.L.str.2)
 	addi	a0, a0, %lo(.L.str.2)
-	call	scanf
-	lw	a0, -16(s0)
-	lw	a0, 4(a0)
-	call	strlen
-	lw	a1, -16(s0)
-	sw	a0, 0(a1)
+	call	__isoc99_scanf
 	lw	a0, -16(s0)
 	lw	s0, 8(sp)
 	lw	ra, 12(sp)
 	addi	sp, sp, 16
 	ret
-
 
 	.globl	getInt                  # -- Begin function getInt
 getInt:                                 # @getInt
@@ -174,14 +157,13 @@ getInt:                                 # @getInt
 	lw	a1, -16(s0)
 	lui	a0, %hi(.L.str.3)
 	addi	a0, a0, %lo(.L.str.3)
-	call	scanf
+	call	__isoc99_scanf
 	lw	a0, -16(s0)
 	lw	a0, 0(a0)
 	lw	s0, 8(sp)
 	lw	ra, 12(sp)
 	addi	sp, sp, 16
 	ret
-
 
 	.globl	_string.parseInt                # -- Begin function parseInt
 _string.parseInt:                               # @parseInt
@@ -198,7 +180,7 @@ _string.parseInt:                               # @parseInt
 	sw	a0, -16(s0)
 	sw	zero, -20(s0)
 	lw	a0, -16(s0)
-	lw	a0, 0(a0)
+	call	strlen
 	sw	a0, -24(s0)
 	sw	zero, -32(s0)
 	j	.LBB7_1
@@ -209,7 +191,6 @@ _string.parseInt:                               # @parseInt
 	j	.LBB7_2
 .LBB7_2:                                #   in Loop: Header=BB7_1 Depth=1
 	lw	a0, -16(s0)
-	lw	a0, 4(a0)
 	lw	a1, -32(s0)
 	add	a0, a0, a1
 	lb	a0, 0(a0)
@@ -249,7 +230,6 @@ _string.parseInt:                               # @parseInt
 	addi	sp, sp, 32
 	ret
 
-
 	.globl	_string.substring               # -- Begin function substring
 _string.substring:                              # @substring
 	.cfi_startproc
@@ -268,33 +248,25 @@ _string.substring:                              # @substring
 	lw	a0, -16(s0)
 	lw	a1, -12(s0)
 	sub	a0, a0, a1
-	addi	a0, a0, 5
+	addi	a0, a0, 1
 	srai	a1, a0, 31
 	call	malloc
 	sw	a0, -32(s0)
-	lw	a0, -16(s0)
-	lw	a1, -12(s0)
-	sub	a0, a0, a1
-	lw	a1, -32(s0)
-	sw	a0, 0(a1)
 	sw	zero, -36(s0)
 	j	.LBB8_1
 .LBB8_1:                                # =>This Inner Loop Header: Depth=1
 	lw	a0, -36(s0)
 	lw	a1, -32(s0)
-	lw	a1, 0(a1)
-	bge	a0, a1, .LBB8_4
+	bgeu	a0, a1, .LBB8_4
 	j	.LBB8_2
 .LBB8_2:                                #   in Loop: Header=BB8_1 Depth=1
 	lw	a0, -24(s0)
-	lw	a0, 4(a0)
 	lw	a1, -36(s0)
 	lw	a2, -12(s0)
 	add	a2, a1, a2
 	add	a0, a0, a2
 	lb	a0, 0(a0)
 	lw	a2, -32(s0)
-	lw	a2, 4(a2)
 	add	a1, a2, a1
 	sb	a0, 0(a1)
 	j	.LBB8_3
@@ -305,12 +277,11 @@ _string.substring:                              # @substring
 	j	.LBB8_1
 .LBB8_4:
 	lw	a0, -32(s0)
-	lw	a0, 4(a0)
 	lw	a1, -16(s0)
 	lw	a2, -12(s0)
 	sub	a1, a1, a2
-	add	a0, a1, a0
-	sb	zero, 4(a0)
+	add	a0, a0, a1
+	sb	zero, 0(a0)
 	lw	a0, -32(s0)
 	lw	s0, 40(sp)
 	lw	ra, 44(sp)
@@ -332,7 +303,6 @@ _string.ord:                                    # @ord
 	sw	a0, -12(s0)
 	sw	a1, -16(s0)
 	lw	a0, -16(s0)
-	lw	a0, 4(a0)
 	lw	a1, -12(s0)
 	add	a0, a0, a1
 	lb	a0, 0(a0)
@@ -340,7 +310,6 @@ _string.ord:                                    # @ord
 	lw	ra, 12(sp)
 	addi	sp, sp, 16
 	ret
-
 
 	.globl	_string.length                  # -- Begin function length
 _string.length:                                 # @length
@@ -356,69 +325,57 @@ _string.length:                                 # @length
 	.cfi_def_cfa s0, 0
 	sw	a0, -16(s0)
 	lw	a0, -16(s0)
-	lw	a0, 0(a0)
+	call	strlen
 	lw	s0, 8(sp)
 	lw	ra, 12(sp)
 	addi	sp, sp, 16
 	ret
 
-
 	.globl	append                  # -- Begin function append
 append:                                 # @append
 	.cfi_startproc
 # %bb.0:
-	addi	sp, sp, -32
-	.cfi_def_cfa_offset 32
-	sw	ra, 28(sp)
-	sw	s0, 24(sp)
+	addi	sp, sp, -48
+	.cfi_def_cfa_offset 48
+	sw	ra, 44(sp)
+	sw	s0, 40(sp)
 	.cfi_offset ra, -4
 	.cfi_offset s0, -8
-	addi	s0, sp, 32
+	addi	s0, sp, 48
 	.cfi_def_cfa s0, 0
 	sw	a0, -16(s0)
 	sw	a1, -24(s0)
 	lw	a0, -16(s0)
-	lw	a0, 0(a0)
-	lw	a1, -24(s0)
-	lw	a1, 0(a1)
+	call	strlen
+	sw	a0, -28(s0)
+	lw	a0, -24(s0)
+	call	strlen
+	sw	a0, -32(s0)
+	lw	a0, -28(s0)
+	lw	a1, -32(s0)
 	add	a0, a0, a1
-	addi	a0, a0, 5
+	addi	a0, a0, 1
 	srai	a1, a0, 31
 	call	malloc
-	sw	a0, -32(s0)
-	lw	a0, -16(s0)
-	lw	a0, 0(a0)
-	lw	a1, -24(s0)
-	lw	a1, 0(a1)
-	add	a0, a0, a1
-	lw	a1, -32(s0)
-	sw	a0, 0(a1)
-	lw	a0, -32(s0)
-	lw	a0, 4(a0)
+	sw	a0, -40(s0)
+	lw	a0, -40(s0)
 	lw	a1, -16(s0)
-	lw	a1, 4(a1)
 	call	strcpy
-	lw	a0, -32(s0)
-	lw	a0, 4(a0)
-	lw	a1, -16(s0)
-	lw	a1, 0(a1)
+	lw	a0, -40(s0)
+	lw	a1, -28(s0)
 	add	a0, a0, a1
 	lw	a1, -24(s0)
-	lw	a1, 4(a1)
 	call	strcpy
-	lw	a0, -32(s0)
-	lw	a0, 4(a0)
-	lw	a1, -16(s0)
-	lw	a1, 0(a1)
-	lw	a2, -24(s0)
-	lw	a2, 0(a2)
+	lw	a0, -40(s0)
+	lw	a1, -28(s0)
+	lw	a2, -32(s0)
 	add	a1, a1, a2
-	add	a0, a1, a0
-	sb	zero, 4(a0)
-	lw	a0, -32(s0)
-	lw	s0, 24(sp)
-	lw	ra, 28(sp)
-	addi	sp, sp, 32
+	add	a0, a0, a1
+	sb	zero, 0(a0)
+	lw	a0, -40(s0)
+	lw	s0, 40(sp)
+	lw	ra, 44(sp)
+	addi	sp, sp, 48
 	ret
 
 	.globl	strcopy                 # -- Begin function strcopy
@@ -434,29 +391,22 @@ strcopy:                                # @strcopy
 	addi	s0, sp, 32
 	.cfi_def_cfa s0, 0
 	sw	a0, -16(s0)
-	sw	a1, -24(s0)
-	lw	a0, -24(s0)
-	lw	a0, 0(a0)
-	addi	a0, a0, 5
+	lw	a0, -16(s0)
+	call	strlen
+	sw	a0, -20(s0)
+	lw	a0, -20(s0)
+	addi	a0, a0, 1
 	srai	a1, a0, 31
 	call	malloc
-	sw	a0, -16(s0)
+	sw	a0, -24(s0)
 	lw	a0, -24(s0)
-	lw	a0, 0(a0)
 	lw	a1, -16(s0)
-	sw	a0, 0(a1)
-	lw	a0, -16(s0)
-	lw	a0, 4(a0)
-	lw	a1, -24(s0)
-	lw	a1, 4(a1)
 	call	strcpy
-	lw	a0, -16(s0)
-	lw	a0, 4(a0)
-	lw	a1, -24(s0)
-	lw	a1, 0(a1)
-	add	a0, a1, a0
-	sb	zero, 4(a0)
-	lw	a0, -16(s0)
+	lw	a0, -24(s0)
+	lw	a1, -20(s0)
+	add	a0, a0, a1
+	sb	zero, 0(a0)
+	lw	a0, -24(s0)
 	lw	s0, 24(sp)
 	lw	ra, 28(sp)
 	addi	sp, sp, 32
@@ -477,14 +427,13 @@ strcomp:                                # @strcomp
 	sw	a0, -16(s0)
 	sw	a1, -24(s0)
 	lw	a0, -16(s0)
-	lw	a0, 4(a0)
 	lw	a1, -24(s0)
-	lw	a1, 4(a1)
 	call	strcmp
 	lw	s0, 24(sp)
 	lw	ra, 28(sp)
 	addi	sp, sp, 32
 	ret
+
 
 	.data
 .L.str:
