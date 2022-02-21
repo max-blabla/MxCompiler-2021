@@ -727,10 +727,12 @@ public class SemanticChecker extends MxBaseListener{
                 else FuncParam = FuncFind(ClassName, ClassName);
                 if(FuncParam == null) throw new ErrorInfo("Func Not Exist");
                 if (CallParam.size() != FuncParam.size() - 1) throw new ErrorInfo("Wrong Param Number");
+                System.out.println(Left.Id);
                 for (int i = 1; i <= CallParam.size(); i++) {
                     IdInfo Info = FuncParam.get(i);
                     IdInfo CallInfo = CallParam.get(i - 1);
-                    if (!Objects.equals(Info.Type, CallInfo.Type)) throw new ErrorInfo("Wrong Param Type");
+                    boolean IsBuiltin = Objects.equals(Info.Type, "int") || Objects.equals(Info.Type, "string") || Objects.equals(Info.Type, "bool");
+                    if (!Objects.equals(Info.Type, CallInfo.Type) && !(!IsBuiltin && Objects.equals(CallInfo.Type, "null"))) throw new ErrorInfo("Wrong Param Type");
                 }
                 return FuncParam.get(0);
             }
