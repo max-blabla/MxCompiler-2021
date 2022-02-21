@@ -8,10 +8,9 @@ import CodeGenerator.CodeGenerator;
 import IRBuilder.IRBuilder;
 import MxParser.MxParser;
 import PostASTBuilder.PostASTBuilder;
-import org.antlr.v4.runtime.ANTLRInputStream;
 import MxParser.MxLexer;
+import org.antlr.v4.runtime.ANTLRInputStream;
 import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.RecognitionException;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 
@@ -29,13 +28,14 @@ public class Main {
             try {
                 String InputFile;
              //   InputFile = "./Compiler-2021-testcases/codegen/e" + 1 + ".mx";
-          //          String IROutputFile = "./src/IROutput/test.ll";
+                    String IROutputFile = "./src/IROutput/test.ll";
     //                String CGOutputFile = "./src/CGOutput/test.s";
                     //  String CGOutputFile = "D://Coding/ravel-master/build/test.s";
-                        String CGOutputFile = "./src/output.s";
+                        String CGOutputFile = "output.s";
                        InputStream is = System.in;
             //        InputStream is = new FileInputStream(InputFile);
 
+                  //  ANTLRInputStream input = new ANTLRInputStream(is);
                     ANTLRInputStream input = new ANTLRInputStream(is);
                     MxLexer lexer = new MxLexer(input);
                     CommonTokenStream tokens = new CommonTokenStream(lexer);
@@ -60,8 +60,8 @@ public class Main {
                     //   PostIrBuilder.BlockMerging();
                     PostIrBuilder.RemoveRedundant();
 
-            //        IROutput IROut = new IROutput(IR.GetModuleList());
-            //        IROut.FileRun(IROutputFile);
+                    IROutput IROut = new IROutput(IR.GetModuleList());
+                    IROut.FileRun(IROutputFile);
                     CodeGenerator CodeGen = new CodeGenerator();
                     CodeGen.setModuleList(IR.GetModuleList());
                     CodeGen.CodeGenerate();
