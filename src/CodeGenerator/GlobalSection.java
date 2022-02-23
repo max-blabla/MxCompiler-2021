@@ -20,6 +20,5 @@ public class GlobalSection {
         else {
                 Stream.println("\t" + ".word" + "\t" + 0);
         }
-        Stream.println("\t"+".size"+"\t" + Size.toString());
     }
 }

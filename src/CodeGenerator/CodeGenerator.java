@@ -22,6 +22,7 @@ public class CodeGenerator {
     String ZeroRegister = "zero";
     HashMap<String,GlobalSection> GlobalVariables = new HashMap<>();
     HashMap<String,Integer> CurFuncVariables;
+    HashMap<String,String> LabelToClang = new HashMap<>();
     HashMap<String,List<String>> AllFuncParams = new HashMap<>();
     List<FunctionSection> FunctionsCode = new ArrayList<>();
     List<IRModule> ModuleList;
@@ -36,6 +37,8 @@ public class CodeGenerator {
     HashMap<String,Integer> CurSavedUsed = new HashMap<>();
     Integer Cnt = 0;
     Integer Flag = 0;
+    Integer FuncCnt = 0;
+    Integer BlockCnt = 0;
     //人工对照表：
     // zero 0
     // ra 1
@@ -152,10 +155,12 @@ public class CodeGenerator {
         RegReset();
         StackTop = 0;
         StackBottom = 0;
+        ++FuncCnt;
+        BlockCnt = 0;
         IRToVir = new HashMap<>();
         VirFuncVarPos = new HashMap<>();
         FunctionSection NewFunc = new FunctionSection(irFunc.getFuncName());
-        BlockSection Start = new BlockSection("");
+        BlockSection Start = new BlockSection("","");
         CurSavedUsed = new HashMap<>();
         StackBottom -= 16;
         BlockGen(irFunc.getStart(),NewFunc);
@@ -182,7 +187,7 @@ public class CodeGenerator {
     List<BlockSection> RegDistribute(List<BlockSection> BlockList){
         List<BlockSection> NewBlockList = new ArrayList<>();
         for(BlockSection Block : BlockList){
-            BlockSection NewBlock = new BlockSection(Block.BlockLable);
+            BlockSection NewBlock = new BlockSection(Block.BlockLable,Block.IRBlockLabel);
             for(BaseCode Code :Block.CodeList){
                 if(Code instanceof ICode) {
                     ICode ImmCode = (ICode) Code;
@@ -326,6 +331,7 @@ public class CodeGenerator {
                         BranchCode.Rs2 = "s1";
                         NewBlock.CodeList.add(Rs2Load);
                     }
+                    BranchCode.Imm = LabelToClang.get(BranchCode.Imm);
                     NewBlock.CodeList.add(BranchCode);
                 }
                 else if(Code instanceof MCode){
@@ -338,6 +344,7 @@ public class CodeGenerator {
                 }
                 else if(Code instanceof JCode){
                     JCode JumpCode = (JCode) Code;
+                    JumpCode.Block = LabelToClang.get(JumpCode.Block);
                     NewBlock.CodeList.add(JumpCode);
                 }
                 else if(Code instanceof UCode){
@@ -438,9 +445,10 @@ public class CodeGenerator {
     }
     void BlockGen(IRBlock irBlock,FunctionSection func){
         if(irBlock == null) return;
-   //     HashMap<Integer,String> StackTable = new HashMap<>();
-        BlockSection NewBlockCode = new BlockSection(irBlock.getLabel());
-  //      System.out.println(irBlock.getLabel());
+        ++BlockCnt;
+        String ClangName = ".LBB"+FuncCnt + "_" +BlockCnt;
+        LabelToClang.put(irBlock.getLabel(),ClangName);
+        BlockSection NewBlockCode = new BlockSection(ClangName,irBlock.getLabel());
         List<BaseInstr> InstrList = irBlock.getVarInstrList();
         InstrList.add(irBlock.getEndInstr());
         int InstrLine = 0;

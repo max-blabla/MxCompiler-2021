@@ -9,14 +9,16 @@ import java.util.Objects;
 public class BlockSection {
     String BlockLable;
     ArrayDeque<BaseCode> CodeList;
-    BlockSection(String Lable){
+    String IRBlockLabel;
+    BlockSection(String Lable,String irBlockLabel){
         BlockLable = Lable;
+        IRBlockLabel = irBlockLabel;
         CodeList = new ArrayDeque<>();
     }
 
 
     public void Output(PrintStream Stream){
-        if(!Objects.equals(BlockLable, "")) Stream.println(BlockLable+":");
+        if(!Objects.equals(BlockLable, "")) Stream.println(BlockLable+":" + "\t\t\t #" +IRBlockLabel);
         for(BaseCode Code : CodeList) Code.Output(Stream);
     }
 }
