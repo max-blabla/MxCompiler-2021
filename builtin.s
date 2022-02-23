@@ -280,7 +280,7 @@ _string.parseInt:                               # @_string.parseInt
 	.globl	_string.length                  # -- Begin function _string.length
 	.p2align	2
 	.type	_string.length,@function
-length:                                 # @_string.length
+_string.length:                                 # @_string.length
 	.cfi_startproc
 # %bb.0:
 	addi	sp, sp, -16
