@@ -255,7 +255,7 @@ _string.parseInt:                               # @_string.parseInt
 .LBB7_5:                                #   in Loop: Header=BB7_1 Depth=1
 	lw	a0, -24(s0)
 	addi	a1, zero, 10
-	call	__mulsi3
+	mul	a0, a0, a1
 	lw	a1, -28(s0)
 	add	a0, a0, a1
 	sw	a0, -24(s0)
@@ -279,8 +279,8 @@ _string.parseInt:                               # @_string.parseInt
                                         # -- End function
 	.globl	_string.length                  # -- Begin function _string.length
 	.p2align	2
-	.type	length,@function
-_string.length:                                 # @_string.length
+	.type	_string.length,@function
+length:                                 # @_string.length
 	.cfi_startproc
 # %bb.0:
 	addi	sp, sp, -16
