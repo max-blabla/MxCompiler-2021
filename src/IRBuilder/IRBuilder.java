@@ -813,7 +813,11 @@ public class IRBuilder {
         String Addi = Func.NewReg();
         String Rd = Func.NewReg();
       //  String AimType;
-        Boolean IsBultin = Objects.equals(Type, "i32") ||Objects.equals(Type, "_string")||Objects.equals(Type, "i8");
+        int index = Type.indexOf("*");
+        String MainType;
+        if(index != -1) MainType = Type.substring(0,index);
+        else MainType = Type;
+        Boolean IsBultin = Objects.equals(MainType, "i32") ||Objects.equals(MainType, "_string")||Objects.equals(MainType, "i8");
         if (CurDemension != AllSize.size()) {
             List<String> Params = new ArrayList<>();
             List<String> ParamTypes = new ArrayList<>();
