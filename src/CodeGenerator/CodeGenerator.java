@@ -37,7 +37,7 @@ public class CodeGenerator {
     HashMap<String,Integer> CurSavedUsed = new HashMap<>();
     Integer Cnt = 0;
     Integer Flag = 0;
-    Integer FuncCnt = 0;
+    Integer FuncCnt = 8;
     Integer BlockCnt = 0;
     //人工对照表：
     // zero 0
@@ -52,8 +52,6 @@ public class CodeGenerator {
     // a2-7 12-17
     // s2-11 18-27
     // t3-6 28-31
-    //TODO 设置Link库
-    //TODO 寄存器调配
 
     public void setModuleList(List<IRModule> moduleList) {
         ModuleList = moduleList;
@@ -125,15 +123,22 @@ public class CodeGenerator {
         for(RegUsage usage : RegTable) usage.Type = UsageType.Idle;
     }
     void TranSection(String FuncName,BlockSection Start, BlockSection End){
-        ICode SpDown = new ICode("addi",StackPointerName,StackPointerName,StackBottom.toString(),0);
-        ICode SpUp = new ICode("addi",StackPointerName,StackPointerName,Integer.toString(-StackBottom),0);
+        if(StackBottom < -2048){
+            UCode Li = new UCode("li","t0",Integer.toString(StackBottom),0);
+            RCode SpDown = new RCode("add","sp","sp","t0",0);
+            Start.CodeList.add(Li);
+            Start.CodeList.add(SpDown);
+        }
+        else{
+            ICode SpDown  = new ICode("addi", StackPointerName, StackPointerName, Integer.toString(StackBottom), 0);
+            Start.CodeList.add(SpDown);
+        }
         SCode RaIn = new SCode("sw","ra","sp",-4,0);
         LCode RaOut = new LCode("lw","ra","sp",-4,0);
         SCode S0In = new SCode("sw","s0","sp",-8,0);
         LCode S0Out = new LCode("lw","s0","sp",-8,0);
         SCode S1In = new SCode("sw","s1","sp",-12,0);
         LCode S1Out = new LCode("lw","s1","sp",-12,0);
-        Start.CodeList.add(SpDown);
         Start.CodeList.add(RaIn);
         Start.CodeList.add(S0In);
         Start.CodeList.add(S1In);
@@ -147,7 +152,16 @@ public class CodeGenerator {
         End.CodeList.add(S1Out);
         End.CodeList.add(S0Out);
         End.CodeList.add(RaOut);
-        End.CodeList.add(SpUp);
+        if(StackBottom < -2048){
+            UCode Li = new UCode("li","t0",Integer.toString(-StackBottom),0);
+            RCode SpUp = new RCode("add","sp","sp","t0",0);
+            End.CodeList.add(Li);
+            End.CodeList.add(SpUp);
+        }
+        else{
+            ICode SpUp  = new ICode("addi", StackPointerName, StackPointerName, Integer.toString(-StackBottom), 0);
+            End.CodeList.add(SpUp);
+        }
     }
     void FuncGen(IRFunc irFunc){
         if(irFunc.getInline()) return;
@@ -169,10 +183,11 @@ public class CodeGenerator {
         BlockSection End = NewFunc.BlocksCode.get(NewFunc.BlocksCode.size()-1);
         TranSection(irFunc.getFuncName(),Start,End);
         NewFunc.Start = Start;
-        StackOffsetFlush(NewFunc,StackTop-StackBottom);
+        List<BlockSection> NewBlocks = StackOffsetFlush(NewFunc,StackTop-StackBottom);
         MCode Ret = new MCode("ret",0);
-        End.CodeList.add(Ret);
-        NewFunc.Start =  Start;
+        NewBlocks.get(NewBlocks.size()-1).CodeList.add(Ret);
+        NewFunc.Start = NewBlocks.get(0);
+        NewFunc.BlocksCode = NewBlocks.subList(1,NewBlocks.size());
         FunctionsCode.add(NewFunc);
     }
     Integer IRTypeToSize(String Type){
@@ -397,33 +412,65 @@ public class CodeGenerator {
         }
         return NewBlockList;
     }
-    void StackOffsetFlush(FunctionSection Func,Integer StackSize){
+    List<BlockSection> StackOffsetFlush(FunctionSection Func,Integer StackSize){
         List<BlockSection> Blocks = new ArrayList<>();
         Blocks.add(Func.Start);
         Blocks.addAll(Func.BlocksCode);
+        List<BlockSection> NewBlocks = new ArrayList<>();
         for(BlockSection Block : Blocks) {
+            BlockSection NewBlock = new BlockSection(Block.BlockLable,Block.IRBlockLabel);
             for (BaseCode Code : Block.CodeList){
                 if (Code instanceof SCode ) {
                     SCode Store = (SCode) Code;
                     if (Objects.equals(Store.Rs2, "sp")) Store.Imm += StackSize;
+                    if(Store.Imm >= 2048){
+                        UCode NewLui  = new UCode("li","t0",Store.Imm.toString(),Store.Line);
+                        RCode NewAdd  = new RCode("add",Store.Rs2,Store.Rs2,"t0", Store.Line);
+                        Store.Imm = 0;
+                        NewBlock.CodeList.add(NewLui);
+                        NewBlock.CodeList.add(NewAdd);
+                    }
+                    NewBlock.CodeList.add(Store);
                 }
                 else if(Code instanceof LCode) {
 
                     LCode Load = (LCode) Code;
 
                     if (Objects.equals(Load.Rs, "sp")) Load.Offset += StackSize;
+                    if(Load.Offset >= 2048){
+                        UCode NewLui  = new UCode("li","t0",Load.Offset.toString(),Load.Line);
+                        RCode NewAdd  = new RCode("add",Load.Rs,Load.Rs,"t0", Load.Line);
+                        Load.Offset = 0;
+                        NewBlock.CodeList.add(NewLui);
+                        NewBlock.CodeList.add(NewAdd);
+                    }
+                    NewBlock.CodeList.add(Load);
                 }
                 else if(Code instanceof ICode){
                     ICode Imm = (ICode) Code;
                     String imm = Imm.Imm;
-                    if(imm.length()>4 && imm.substring(0, 4).equals("(sp)")){
-                        Imm.Imm = Integer.toString(Integer.parseInt(imm.substring(4))+StackSize);
-                        Imm.Rs = "sp";
+                    if(imm.length()>4 && imm.startsWith("(sp)")){
+                        Integer Offset = Integer.parseInt(imm.substring(4))+StackSize;
+                        if(Offset > 2047 ||Offset < -2048){
+                            UCode Li = new UCode("li","t0",Offset.toString(),Imm.Line);
+                            RCode Add = new RCode("add","sp","sp","t0", Imm.Line);
+                            NewBlock.CodeList.add(Li);
+                            NewBlock.CodeList.add(Add);
+                        }
+                        else {
+                            Imm.Imm = Integer.toString(Offset);
+                            Imm.Rs = "sp";
+                            NewBlock.CodeList.add(Code);
+                        }
                     }
-                }
+                    else  NewBlock.CodeList.add(Code);
 
+                }
+                else NewBlock.CodeList.add(Code);
             }
+            NewBlocks.add(NewBlock);
         }
+        return NewBlocks;
     }
     Address GetVirtualReg(String User){
         if(IRToVir.containsKey(User)) return VirFuncVarPos.get(IRToVir.get(User));
@@ -500,10 +547,10 @@ public class CodeGenerator {
                     else ImmUser = NewIROp.Rd;
                     Address ImmAddr = GetVirtualReg(ImmUser);
                     long IntImm = Long.parseLong(Imm);
-                    if(IntImm >= 4096){
-                        UCode NewLui = new UCode("lui",ImmAddr.VirName,Long.toString(IntImm >> 12),InstrLine);
-                        ICode NewLi = new ICode("addi", ImmAddr.VirName, ImmAddr.VirName, Long.toString(IntImm & 4095), InstrLine);
-                        NewBlockCode.CodeList.add(NewLui);
+                    if(IntImm > 2047 || IntImm < -2048 ){
+                        UCode NewLi = new UCode("li",ImmAddr.VirName,Long.toString(IntImm ),InstrLine);
+                    //    ICode NewLi = new ICode("addi", ImmAddr.VirName, ImmAddr.VirName, Long.toString(IntImm & 4095), InstrLine);
+                    //    NewBlockCode.CodeList.add(NewLui);
                         NewBlockCode.CodeList.add(NewLi);
                     }
                     else {
