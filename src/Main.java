@@ -31,7 +31,7 @@ public class Main {
          //           String IROutputFile = "./src/IROutput/test.ll";
     //                String CGOutputFile = "./src/CGOutput/test.s";
                     //  String CGOutputFile = "D://Coding/ravel-master/build/test.s";
-                        String CGOutputFile = "test.s";
+                        String CGOutputFile = "output.s";
                        InputStream is = System.in;
             //        InputStream is = new FileInputStream(InputFile);
 
