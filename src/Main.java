@@ -28,10 +28,10 @@ public class Main {
             try {
                 String InputFile;
              //   InputFile = "./Compiler-2021-testcases/codegen/e" + 1 + ".mx";
-                    String IROutputFile = "./src/IROutput/test.ll";
+         //           String IROutputFile = "./src/IROutput/test.ll";
     //                String CGOutputFile = "./src/CGOutput/test.s";
                     //  String CGOutputFile = "D://Coding/ravel-master/build/test.s";
-                        String CGOutputFile = "output.s";
+                        String CGOutputFile = "test.s";
                        InputStream is = System.in;
             //        InputStream is = new FileInputStream(InputFile);
 
@@ -60,8 +60,8 @@ public class Main {
                     //   PostIrBuilder.BlockMerging();
                     PostIrBuilder.RemoveRedundant();
 
-                    IROutput IROut = new IROutput(IR.GetModuleList());
-                    IROut.FileRun(IROutputFile);
+       //             IROutput IROut = new IROutput(IR.GetModuleList());
+       //             IROut.FileRun(IROutputFile);
                     CodeGenerator CodeGen = new CodeGenerator();
                     CodeGen.setModuleList(IR.GetModuleList());
                     CodeGen.CodeGenerate();

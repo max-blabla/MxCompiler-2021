@@ -1022,7 +1022,7 @@ public class IRBuilder {
                         CurBlock.InsertInstr(NewThisLoad);
                         CurBlock.InsertInstr(NewGet);
                     } else Ptr = PrePtr;
-                    LoadInstr NewLoad = new LoadInstr("load", Rd, Value.Type, Ptr, Value.Type + "*", false);
+                    LoadInstr NewLoad = new LoadInstr("load", Rd, Value.Type, Ptr, Value.Type + "*", !Ptr.contains("."));
                     CurBlock.InsertInstr(NewLoad);
                 }
                 else{
