@@ -5,21 +5,28 @@ import org.antlr.v4.codegen.model.SrcOp;
 import java.io.PrintStream;
 
 public class BCode extends BaseCode{
-    String Op;
-    String Rs1;
-    String Imm;
-    String Rs2;
-    BCode(String op, String rs1, String rs2, String imm,Integer Line){
+    OpType Op;
+    RegType Rs1;
+    Integer VirRs1;
+    String Block;
+    RegType Rs2;
+    Integer VirRs2;
+    BCode(OpType op, Integer virRs1, Integer virRs2, String block,Integer Line){
         super(CodeType.BType,Line);
         Op = op;
-        Rs1 = rs1;
-        Rs2 = rs2;
-        Imm = imm;
+        VirRs1  = virRs1;
+        VirRs2 = virRs2;
+        Block = block;
+    }
+
+    void SetTrue(Triple tr){
+        Rs1 = tr.Rs1;
+        Rs2 = tr.Rs2;
     }
 
     @Override
     public void Output(PrintStream Stream) {
-        Stream.print("\t"+Op + " " + Rs1 + " ," + Rs2 + " ," + Imm);
+        Stream.print("\t"+Op + " " + Rs1 + " ," + Rs2 + " ," + Block);
         OutputLine(Stream);
         Stream.print("\n");
     }

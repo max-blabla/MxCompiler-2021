@@ -3,14 +3,21 @@ package CodeGenerator;
 import java.io.PrintStream;
 
 public class PCode extends BaseCode{
-    String Op;
-    String Rd;
-    String Rs;
-    PCode(String op, String rd, String rs,Integer Line){
+    OpType Op;
+    RegType Rd;
+    RegType Rs;
+    Integer VirRs;
+    Integer VirRd;
+    PCode(OpType op, Integer virRd, Integer virRs,Integer Line){
         super(CodeType.PType,Line);
         Op = op;
-        Rd = rd;
-        Rs = rs;
+        VirRs  = virRs;
+        VirRd = virRd;
+    }
+
+    void SetTrue(Triple tr){
+        Rd = tr.Rd;
+        Rs = tr.Rs1;
     }
 
     @Override

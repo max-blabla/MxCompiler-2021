@@ -3,17 +3,17 @@ package CodeGenerator;
 import java.io.PrintStream;
 
 public class CCode extends BaseCode{
-    String Op;
-    String Rs;
-    CCode(String op,String rs,Integer Line){
+    OpType Op;
+    String FuncName;
+    CCode(OpType op,String funcName,Integer Line){
         super(CodeType.CType,Line);
         Op = op;
-        Rs = rs;
+        FuncName = funcName;
     }
 
     @Override
     public void Output(PrintStream Stream) {
-        Stream.print("\t"+Op+ " " + Rs);
+        Stream.print("\t"+Op+ " " + FuncName);
         OutputLine(Stream);
         Stream.print("\n");
     }

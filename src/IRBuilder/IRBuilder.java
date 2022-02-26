@@ -821,7 +821,7 @@ public class IRBuilder {
         if (CurDemension != AllSize.size()) {
             List<String> Params = new ArrayList<>();
             List<String> ParamTypes = new ArrayList<>();
-            Params.add(Multi);
+            Params.add(Addi);
             ParamTypes.add(TypeToIRType("int"));
             OperationInstr NewMulti = new OperationInstr("mul", AllSize.get(CurDemension).Name, "4", TypeToIRType("int"), TypeToIRType("int"), Multi, "");
             OperationInstr NewAddi = new OperationInstr("add", Multi, "4", TypeToIRType("int"), TypeToIRType("int"), Addi, "");
@@ -838,7 +838,7 @@ public class IRBuilder {
             }
         }
         else {
-            if (!IsBultin) {
+           /* if (!IsBultin) {
                 //  StoreInstr PtrStore = new StoreInstr("store", "a", "a", "a", "a" + "*", false, false);
                 String InitReg = Func.NewReg();
                 List<String> MParams = new ArrayList<>();
@@ -857,7 +857,7 @@ public class IRBuilder {
                 CurBlock.InsertInstr(CallInit);
                 StoreInstr PtrStore = new StoreInstr("store", Rd, Type, Ptr, Type + "*", !Ptr.contains("."), false);
                 CurBlock.InsertInstr(PtrStore);
-            }
+            }*/
             return "";
         }
         IRBlock NewCondition = new IRBlock(BlockType.Condition, "NewArrayCondition", BlockNum++);
@@ -931,7 +931,7 @@ public class IRBuilder {
             }
             else{
                 Ret.Type = TypeToIRType(NewTypeNode.getNewType());
-                Boolean IsBultin = Objects.equals( Ret.Type , "i32") ||Objects.equals( Ret.Type , "_string")||Objects.equals( Ret.Type , "i8");
+                boolean IsBultin = Objects.equals( Ret.Type , "i32") ||Objects.equals( Ret.Type , "_string")||Objects.equals( Ret.Type , "i8");
                 if(!IsBultin) {
                     String InitReg = Func.NewReg();
                     String Addi = Func.NewReg();
@@ -1196,13 +1196,11 @@ public class IRBuilder {
         else if(Root.getType() == ExprType.LeftSelfPlus){
             Boolean isGlobal = !Left.Name.contains(".");
             Ret.Type = Left.Type;
-            String LoadReg =  Rd;
             Rd = Func.NewReg();
             Ret.Name = Rd;
-            LoadInstr NewLoad = new LoadInstr("load",LoadReg,Ret.Type,Left.Name,Left.Type+"*",isGlobal);
-            OperationInstr NewOp = new OperationInstr("add",LoadReg,"1",Left.Type,TypeToIRType("int"),Rd,"");
-            StoreInstr NewStore = new StoreInstr("store",Rd,Left.Type,Left.Name,Left.Type+"*",isGlobal,false);
-            CurBlock.InsertInstr(NewLoad);
+            OperationInstr NewOp = new OperationInstr("add",Left.Name,"1",Left.Type,TypeToIRType("int"),Rd,"");
+            String Ptr = FindPtr(CurBlock,Left.Name,CurModule);
+            StoreInstr NewStore = new StoreInstr("store",Rd,Left.Type,Ptr,Left.Type+"*",!Ptr.contains("."),false);
             CurBlock.InsertInstr(NewOp);
             CurBlock.InsertInstr(NewStore);
         }
@@ -1212,10 +1210,9 @@ public class IRBuilder {
             String LoadReg =  Rd;
             Rd =Func.NewReg();
             Ret.Name = Rd;;
-            LoadInstr NewLoad = new LoadInstr("load",LoadReg,Left.Name,Left.Name,Left.Type+"*",isGlobal);
-            OperationInstr NewOp = new OperationInstr("sub",LoadReg,"1",Left.Type,TypeToIRType("int"),Rd,"");
-            StoreInstr NewStore = new StoreInstr("store",Rd,Left.Type,Left.Name,Left.Type+"*",isGlobal,false);
-            CurBlock.InsertInstr(NewLoad);
+            OperationInstr NewOp = new OperationInstr("sub",Left.Name,"1",Left.Type,TypeToIRType("int"),Rd,"");
+            String Ptr = FindPtr(CurBlock,Left.Name,CurModule);
+            StoreInstr NewStore = new StoreInstr("store",Rd,Left.Type,Ptr,Left.Type+"*",!Ptr.contains("."),false);
             CurBlock.InsertInstr(NewOp);
             CurBlock.InsertInstr(NewStore);
         }
@@ -1225,7 +1222,7 @@ public class IRBuilder {
             if(Objects.equals(Left.Type, "i8"))
                 XOrOp = new OperationInstr("xor", Left.Name, "255", Left.Type, Left.Type, Ret.Name, "");
             else
-                XOrOp = new OperationInstr("xor", Left.Name, "4294967295", Left.Type, Left.Type, Ret.Name, "");
+                XOrOp = new OperationInstr("xor", Left.Name, "-1", Left.Type, Left.Type, Ret.Name, "");
             CurBlock.InsertInstr(XOrOp);
         }
         else if(Root.getType() == ExprType.Not){
@@ -1242,24 +1239,22 @@ public class IRBuilder {
         else if(Root.getType() == ExprType.RightSelfPlus){
             Boolean isGlobal = !Left.Name.contains(".");
             Ret.Type = Left.Type;
-            String AddReg =  Func.NewReg();
-            LoadInstr NewLoad = new LoadInstr("load",Ret.Name,Ret.Type,Left.Name,Left.Type+"*",isGlobal);
-            OperationInstr NewOp = new OperationInstr("add",Ret.Name,"1",Left.Type,TypeToIRType("int"),AddReg,"");
-            StoreInstr NewStore = new StoreInstr("store",AddReg,Left.Type,Left.Name,Left.Type+"*",isGlobal,false);
-            CurBlock.InsertInstr(NewLoad);
+            OperationInstr NewOp = new OperationInstr("add",Left.Name,"1",Left.Type,TypeToIRType("int"),Rd,"");
+            String Ptr = FindPtr(CurBlock,Left.Name,CurModule);
+            StoreInstr NewStore = new StoreInstr("store",Rd,Left.Type,Ptr,Left.Type+"*",!Ptr.contains("."),false);
             CurBlock.InsertInstr(NewOp);
             CurBlock.InsertInstr(NewStore);
+            Ret.Name = Rd;
         }
         else if(Root.getType() == ExprType.RightSelfMinus){
             Boolean isGlobal = !Left.Name.contains(".");
             Ret.Type = Left.Type;
-            String AddReg = Func.NewReg();
-            LoadInstr NewLoad = new LoadInstr("load",Ret.Name,Ret.Type,Left.Name,Left.Type+"*",isGlobal);
-            OperationInstr NewOp = new OperationInstr("sub",Ret.Name,"1",Left.Type,TypeToIRType("int"),AddReg,"");
-            StoreInstr NewStore = new StoreInstr("store",AddReg,Left.Type,Left.Name,Left.Type+"*",isGlobal,false);
-            CurBlock.InsertInstr(NewLoad);
+            OperationInstr NewOp = new OperationInstr("sub",Left.Name,"1",Left.Type,TypeToIRType("int"),Rd,"");
+            String Ptr = FindPtr(CurBlock,Left.Name,CurModule);
+            StoreInstr NewStore = new StoreInstr("store",Rd,Left.Type,Ptr,Left.Type+"*",!Ptr.contains("."),false);
             CurBlock.InsertInstr(NewOp);
             CurBlock.InsertInstr(NewStore);
+            Ret.Name = Rd;
         }
         else if(Root.getType() == ExprType.Multiply){
             Ret.Type = Left.Type;

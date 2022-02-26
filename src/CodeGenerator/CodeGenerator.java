@@ -1,44 +1,53 @@
 package CodeGenerator;
 
 import IRBuilder.*;
+import CodeGenerator.OpType;
 
+import javax.lang.model.util.AbstractElementVisitor8;
+import java.awt.*;
 import java.io.PrintStream;
 import java.util.*;
+import java.util.List;
 import java.util.Map.Entry;
-class Address{
-    String AimReg;
-    Integer Offset;
-    Boolean IsDirect;
-    String VirName;
-    Address(String aimReg,Integer offset,Boolean isDirect,String virName){
-        AimReg = aimReg;
-        Offset = offset;
-        IsDirect = isDirect;
-        VirName  = virName;
-    }
+class Triple{
+    RegType Rd;
+    RegType Rs1;
+    RegType Rs2;
 }
+
+//确定一下规范：分配寄存器的时候应当只考虑指针可能有两种，内置或虚，虚要Load出来
 public class CodeGenerator {
-    String StackPointerName = "sp";
-    String ZeroRegister = "zero";
-    HashMap<String,GlobalSection> GlobalVariables = new HashMap<>();
-    HashMap<String,Integer> CurFuncVariables;
-    HashMap<String,String> LabelToClang = new HashMap<>();
-    HashMap<String,List<String>> AllFuncParams = new HashMap<>();
-    List<FunctionSection> FunctionsCode = new ArrayList<>();
+    Integer VirT0 = 6;
+    Integer VirT1 = 7;
+    Integer VirZero = 1;
+    Integer VirT2 = 8;
+    Integer VirSp = 3;
+    Integer VirA0  = 11;
+    Integer VirNull = 0;
+    Integer BuiltinReg = 33;
+    //全局变量
     List<IRModule> ModuleList;
-    ArrayList<RegUsage> RegTable = new ArrayList<>();//记录作用
-    HashMap<String,Integer> RegSerial = new HashMap<>();
-    HashMap<String,Address> VirFuncVarPos;
-    HashMap<String,String> IRToVir;
-    //当寄存器调配不了的时候，会占用栈的调用
+    HashMap<String,GlobalSection> GlobalVariables;
+    HashMap<String,List<String>> AllFuncParams;
+    List<FunctionSection> FunctionsCode;
+    List<RegType> TrueReg;
+    List<String> TrueRegName;
     IRModule Global;
-    Integer StackTop;
-    Integer StackBottom;
-    HashMap<String,Integer> CurSavedUsed = new HashMap<>();
     Integer Cnt = 0;
     Integer Flag = 0;
-    Integer FuncCnt = 8;
+    //Func 变量
+    List<String> CurFuncParam;
+    HashMap<String,Integer> VirName;
+    HashMap<Integer,String> InvVirName;
+    HashMap<String,Integer> ImmName;
+    HashMap<Integer,String> InvImmName;
+    HashMap<String,String> LabelToClang;
+    HashMap<Integer,String> VirStack;
+    Integer StackTop;
+    Integer StackBottom;
     Integer BlockCnt = 0;
+    Integer FuncCnt = 8;
+
     //人工对照表：
     // zero 0
     // ra 1
@@ -64,32 +73,80 @@ public class CodeGenerator {
         for(Entry<String,GlobalSection> entry : GlobalVariables.entrySet())
             entry.getValue().Output(Stream);
     }
-    void RegInitial(){
-        for(int i = 0 ;i < 32;i++){
-            RegUsage Usage;
-            if(i == 0) Usage = new RegUsage("zero",i);
-            else if(i == 1) Usage = new RegUsage("ra",i);
-            else if(i == 2) Usage = new RegUsage("sp",i);
-            else if(i == 3) Usage = new RegUsage("gp",i);
-            else if(i == 4) Usage = new RegUsage("tp",i);
-            else if(i <= 7) Usage = new RegUsage("t"+(i-5),i);
-            else if(i <= 9) Usage = new RegUsage("s"+(i-8),i);
-            else if(i<=17) Usage = new RegUsage("a"+(i-10),i);
-            else if(i<=27) Usage = new RegUsage("s"+(i-16),i);
-            else Usage = new RegUsage("t"+(i-25),i);
-            RegSerial.put(Usage.RegName,Usage.Serial);
-            RegTable.add(Usage);
-        }
-    }
     public void CodeGenerate(){
-        RegInitial();
-        GlobalSet();
+        GlobalInit();
         for(IRModule module:ModuleList){
             for(IRFunc func : module.getFuncSet()) FuncGen(func);
         }
     }
-    void GlobalSet(){
+    List<String> GetVirFuncParam(IRFunc func){
+        List<String> FuncParam = new ArrayList<>();
+        for(IRValue value : func.getParamList()) FuncParam.add(value.getName());
+        return FuncParam;
+    }
+    String StackPos(Integer VirIndex){
+        if(VirStack.containsKey(VirIndex)) return VirStack.get(VirIndex);
+        else {
+            StackBottom -= 4;
+            String Imm = StackBottom.toString();
+            VirStack.put(VirIndex,Imm);
+            return Imm;
+        }
+    }
+    void TranSection(BlockSection Start, BlockSection End){
+        if(StackBottom < -2048){
+            UCode Li = new UCode(OpType.li,VirNull,RegType.t0, Integer.toString(StackBottom),0);
+            RCode SpDown = new RCode(OpType.add,VirNull,VirNull,VirNull,RegType.sp,RegType.sp,RegType.t0,0);
+            Start.CodeList.add(Li);
+            Start.CodeList.add(SpDown);
+        }
+        else{
+            ICode SpDown  = new ICode(OpType.addi, VirNull, VirNull,Integer.toString(StackBottom), 0);
+            SpDown.Rd = RegType.sp;
+            SpDown.Rs = RegType.sp;
+            Start.CodeList.add(SpDown);
+        }
+        SCode RaIn = new SCode(OpType.sw,VirNull,VirNull,RegType.ra,RegType.sp,Integer.toString(-4),0);
+        LCode RaOut = new LCode(OpType.lw,VirNull,VirNull,RegType.ra,RegType.sp,Integer.toString(-4),0);
+        SCode S0In = new SCode(OpType.sw,VirNull,VirNull,RegType.s0,RegType.sp,Integer.toString(-8),0);
+        LCode S0Out = new LCode(OpType.lw,VirNull,VirNull,RegType.s0,RegType.sp,Integer.toString(-8),0);
+        SCode S1In = new SCode(OpType.sw,VirNull,VirNull,RegType.s1,RegType.sp,Integer.toString(-12),0);
+        LCode S1Out = new LCode(OpType.lw,VirNull,VirNull,RegType.s1,RegType.sp,Integer.toString(-12),0);
+        Start.CodeList.add(RaIn);
+        Start.CodeList.add(S0In);
+        Start.CodeList.add(S1In);
+        End.CodeList.add(S1Out);
+        End.CodeList.add(S0Out);
+        End.CodeList.add(RaOut);
+        if(StackBottom < -2048){
+            UCode Li = new UCode(OpType.li,VirNull,RegType.t0,Integer.toString(-StackBottom),0);
+            RCode SpUp = new RCode(OpType.add,VirNull,VirNull,VirNull,RegType.sp,RegType.sp,RegType.t0,0);
+            Start.CodeList.add(Li);
+            Start.CodeList.add(SpUp);
+        }
+        else{
+            ICode SpUp  = new  ICode(OpType.addi, VirNull, VirNull,Integer.toString(-StackBottom), 0);
+            SpUp.Rd = RegType.sp;
+            SpUp.Rs = RegType.sp;
+            End.CodeList.add(SpUp);
+        }
+    }
+    void GlobalInit(){
         //设定函数参数 全局变量 以及 找到全局
+        GlobalVariables = new HashMap<>();
+        AllFuncParams = new HashMap<>();
+        FunctionsCode = new ArrayList<>();
+        TrueReg = new ArrayList<>(Arrays.asList(
+                RegType.NULL,RegType.zero,RegType.ra,RegType.sp,RegType.gp,RegType.tp,RegType.t0,RegType.t1,
+                RegType.t2,RegType.s0,RegType.s1,RegType.a0,RegType.a1,RegType.a2,RegType.a3,RegType.a4,
+                RegType.a5,RegType.a6,RegType.a7, RegType.s2,RegType.s3,RegType.s4,RegType.s5,RegType.s6,
+                RegType.s7,RegType.s8,RegType.s9,RegType.s10,RegType.s11,RegType.t3,RegType.t4,RegType.t5,
+                RegType.t6
+        ));
+        TrueRegName =  new ArrayList<>(Arrays.asList(
+                "NullReg","zero","ra","sp","gp","tp","t0","t1","t2","s0","s1","a0","a1","a2","a3","a4",
+                "a5","a6","a7","s2","s3","s4","s5","s6","s7","s8","s9","s10","s11","t3","t4","t5","t6"
+        ));
         for(IRModule module:ModuleList){
             if(Objects.equals(module.getName(), "_global")) {
                 Global = module;
@@ -114,240 +171,169 @@ public class CodeGenerator {
             }
         }
     }
-    List<String> GetVirFuncParam(IRFunc func){
-        List<String> FuncParam = new ArrayList<>();
-        for(IRValue value : func.getParamList()) FuncParam.add(value.getName());
-        return FuncParam;
-    }
-    void RegReset(){
-        for(RegUsage usage : RegTable) usage.Type = UsageType.Idle;
-    }
-    void TranSection(String FuncName,BlockSection Start, BlockSection End){
-        if(StackBottom < -2048){
-            UCode Li = new UCode("li","t0",Integer.toString(StackBottom),0);
-            RCode SpDown = new RCode("add","sp","sp","t0",0);
-            Start.CodeList.add(Li);
-            Start.CodeList.add(SpDown);
-        }
-        else{
-            ICode SpDown  = new ICode("addi", StackPointerName, StackPointerName, Integer.toString(StackBottom), 0);
-            Start.CodeList.add(SpDown);
-        }
-        SCode RaIn = new SCode("sw","ra","sp",-4,0);
-        LCode RaOut = new LCode("lw","ra","sp",-4,0);
-        SCode S0In = new SCode("sw","s0","sp",-8,0);
-        LCode S0Out = new LCode("lw","s0","sp",-8,0);
-        SCode S1In = new SCode("sw","s1","sp",-12,0);
-        LCode S1Out = new LCode("lw","s1","sp",-12,0);
-        Start.CodeList.add(RaIn);
-        Start.CodeList.add(S0In);
-        Start.CodeList.add(S1In);
-        List<String> FuncFormParam = AllFuncParams.get(FuncName);
-        for(int i = 0 ; i< FuncFormParam.size();i++) {
-            String param = FuncFormParam.get(i);
-            Address StackPos = GetVirtualReg(param);
-            SCode ParamStore = new SCode("sw","a"+i,"sp",StackPos.Offset,0);
-            Start.CodeList.add(ParamStore);
-        }
-        End.CodeList.add(S1Out);
-        End.CodeList.add(S0Out);
-        End.CodeList.add(RaOut);
-        if(StackBottom < -2048){
-            UCode Li = new UCode("li","t0",Integer.toString(-StackBottom),0);
-            RCode SpUp = new RCode("add","sp","sp","t0",0);
-            End.CodeList.add(Li);
-            End.CodeList.add(SpUp);
-        }
-        else{
-            ICode SpUp  = new ICode("addi", StackPointerName, StackPointerName, Integer.toString(-StackBottom), 0);
-            End.CodeList.add(SpUp);
-        }
-    }
-    void FuncGen(IRFunc irFunc){
-        if(irFunc.getInline()) return;
-        if(irFunc.getLinked()) return;
-        RegReset();
+    void FuncInit(IRFunc irFunc){
+        String NullImm = "NullImm";
         StackTop = 0;
         StackBottom = 0;
         ++FuncCnt;
         BlockCnt = 0;
-        IRToVir = new HashMap<>();
-        VirFuncVarPos = new HashMap<>();
+        CurFuncParam = AllFuncParams.get(irFunc.getFuncName());
+        VirName = new HashMap<>();
+        InvVirName = new HashMap<>();
+        ImmName = new HashMap<>();
+        InvImmName = new HashMap<>();
+        LabelToClang = new HashMap<>();
+        ImmName.put(NullImm,0);
+        InvImmName.put(0,NullImm);
+        for(int i = 0 ; i < BuiltinReg;i++){
+            VirName.put(TrueRegName.get(i),i);
+            InvVirName.put(i,TrueRegName.get(i));
+        }
+        for(int i = 0 ; i< CurFuncParam.size();i++){
+            VirName.put(CurFuncParam.get(i),BuiltinReg+i);
+            InvVirName.put(BuiltinReg+i,CurFuncParam.get(i));
+        }
+        VirStack = new HashMap<>();
+    }
+    void FuncGen(IRFunc irFunc){
+        if(irFunc.getInline()) return;
+        if(irFunc.getLinked()) return;
+        FuncInit(irFunc);
         FunctionSection NewFunc = new FunctionSection(irFunc.getFuncName());
         BlockSection Start = new BlockSection("","");
-        CurSavedUsed = new HashMap<>();
         StackBottom -= 16;
         BlockGen(irFunc.getStart(),NewFunc);
         BlockGen(irFunc.getEnd(),NewFunc);
         NewFunc.BlocksCode = RegDistribute(NewFunc.BlocksCode);
+        NewFunc.BlocksCode.add(0,Start);
         BlockSection End = NewFunc.BlocksCode.get(NewFunc.BlocksCode.size()-1);
-        TranSection(irFunc.getFuncName(),Start,End);
-        NewFunc.Start = Start;
-        List<BlockSection> NewBlocks = StackOffsetFlush(NewFunc,StackTop-StackBottom);
+        TranSection(Start,End);
+        NewFunc.BlocksCode = ImmFlush(NewFunc,StackTop-StackBottom);
         MCode Ret = new MCode("ret",0);
-        NewBlocks.get(NewBlocks.size()-1).CodeList.add(Ret);
-        NewFunc.Start = NewBlocks.get(0);
-        NewFunc.BlocksCode = NewBlocks.subList(1,NewBlocks.size());
         FunctionsCode.add(NewFunc);
     }
     Integer IRTypeToSize(String Type){
-        if(Objects.equals(Type, "i32")) return 4;
-        else if(Objects.equals(Type, "i8")) return 4;
-        else if(Type.contains("*")) return 4;
-        else{
-            for(IRModule module: ModuleList) if(Objects.equals(module.getName(), Type)) return module.getSize();
-            return -1;
-        }
+        return 4;
     }
-    List<BlockSection> RegDistribute(List<BlockSection> BlockList){
-        List<BlockSection> NewBlockList = new ArrayList<>();
+    ArrayList<BlockSection> ImmFlush(FunctionSection Func,Integer StackSize){
+        ArrayList<BlockSection> NewBlocks = new ArrayList<>();
+        for(BlockSection Block : Func.BlocksCode){
+            BlockSection NewBlock = new BlockSection(Block.BlockLable,Block.IRBlockLabel);
+            for(BaseCode Code : Block.CodeList){
+                if(Code instanceof ICode){
+                    ICode ImmCode = (ICode) Code;
+                    if(ImmCode.Rs == RegType.sp && ImmCode.Rd != RegType.sp){
+                        Integer Offset = Integer.parseInt(ImmCode.Imm);
+                        ImmCode.Imm = Integer.toString(Offset+StackSize);
+                    }
+                    NewBlock.CodeList.add(ImmCode);
+                }
+                else if(Code instanceof SCode){
+                    SCode StCode = (SCode) Code;
+                    if(StCode.Rs2 == RegType.sp){
+                        int Offset = Integer.parseInt(StCode.Imm)+StackSize;
+                        if(Offset > 2047){
+                            UCode NewLi = new UCode(OpType.li,VirNull,RegType.t0, Integer.toString(Offset),StCode.Line);
+                            RCode NewAdd = new RCode(OpType.add,VirNull,VirNull,VirNull,RegType.t0,RegType.t0,RegType.sp,StCode.Line);
+                            NewBlock.CodeList.add(NewLi);
+                            NewBlock.CodeList.add(NewAdd);
+                            StCode.Rs2 = RegType.t0;
+                            StCode.Imm = "0";
+                        }
+                        else StCode.Imm = Integer.toString(Offset+StackSize);
+                    }
+                    NewBlock.CodeList.add(StCode);
+                }
+                else if(Code instanceof LCode){
+                    LCode LdCode = (LCode) Code;
+                    if(LdCode.Rs == RegType.sp){
+                        int Offset = Integer.parseInt(LdCode.Imm)+StackSize;
+                        if(Offset > 2047){
+                            UCode NewLi = new UCode(OpType.li,VirNull,RegType.t0, Integer.toString(Offset),LdCode.Line);
+                            RCode NewAdd = new RCode(OpType.add,VirNull,VirNull,VirNull,RegType.t0,RegType.t0,RegType.sp,LdCode.Line);
+                            NewBlock.CodeList.add(NewLi);
+                            NewBlock.CodeList.add(NewAdd);
+                            LdCode.Rs = RegType.t0;
+                            LdCode.Imm = "0";
+                        }
+                        else LdCode.Imm = Integer.toString(Offset+StackSize);
+                    }
+                    NewBlock.CodeList.add(LdCode);
+                }
+                else NewBlock.CodeList.add(Code);
+            }
+            NewBlocks.add(NewBlock);
+        }
+        return NewBlocks;
+    }
+    Triple TrueReg(Integer Rd,Integer Rs1, Integer Rs2,BaseCode Self, BlockSection Block){
+        Triple NewTriple = new Triple();
+        if(Rs1 > 0 && Rs1 < BuiltinReg) NewTriple.Rs1 = TrueReg.get(Rs1);
+        else if(Rs1 != 0) {
+            if (Rs1 - BuiltinReg < CurFuncParam.size()) {
+                int ParamIndex = Rs1 - BuiltinReg;
+                if (ParamIndex <= 8) NewTriple.Rs1 = TrueReg.get(11 + ParamIndex);
+                else {
+                    LCode Load = new LCode(OpType.lw, VirNull, VirNull, RegType.t0, RegType.sp,
+                            Integer.toString(4 * (CurFuncParam.size() - ParamIndex)), Self.Line);
+                    Block.CodeList.add(Load);
+                }
+            } else {
+                NewTriple.Rs1 = RegType.s0;
+                LCode Load = new LCode(OpType.lw, VirNull, VirNull, RegType.s0, RegType.sp,
+                        StackPos(Rs1), Self.Line);
+                Block.CodeList.add(Load);
+            }
+        }
+        if(Rs2>0 && Rs2 < BuiltinReg) NewTriple.Rs2 = TrueReg.get(Rs2);
+        else if(Rs2 !=0 ){
+            NewTriple.Rs2 = RegType.s1;
+            LCode Load =new LCode(OpType.lw,VirNull,VirNull,RegType.s1,RegType.sp, StackPos(Rs2),Self.Line);
+            Block.CodeList.add(Load);
+        }
+        Block.CodeList.add(Self);
+        if(Rd > 0 && Rd < BuiltinReg ) NewTriple.Rd = TrueReg.get(Rd);
+        else if(Rd < 0) {
+            int ParamIndex = Integer.parseInt(InvVirName.get(Rd).substring(6));
+            if (ParamIndex < 8) NewTriple.Rd = TrueReg.get(10 + ParamIndex);
+            else {
+                SCode Store = new SCode(OpType.sw, VirNull, VirNull, RegType.t0, RegType.sp,
+                        StackPos(Rd), Self.Line);
+                NewTriple.Rd = RegType.t0;
+                Block.CodeList.add(Store);
+            }
+        }
+        else if(Rd != 0){
+            NewTriple.Rd = RegType.s0;
+            SCode Store = new SCode(OpType.sw,VirNull,VirNull, RegType.s0,RegType.sp,StackPos(Rs1),Self.Line);
+            Block.CodeList.add(Store);
+        }
+        return NewTriple;
+    }
+    ArrayList<BlockSection> RegDistribute(List<BlockSection> BlockList){
+        ArrayList<BlockSection> NewBlockList = new ArrayList<>();
         for(BlockSection Block : BlockList){
             BlockSection NewBlock = new BlockSection(Block.BlockLable,Block.IRBlockLabel);
             for(BaseCode Code :Block.CodeList){
                 if(Code instanceof ICode) {
                     ICode ImmCode = (ICode) Code;
-                    if (Objects.equals(ImmCode.Rs, ".temp")) ImmCode.Rs = "t0";
-                    else if (Objects.equals(ImmCode.Rs, ".temp1")) ImmCode.Rs = "t1";
-                    else if(Objects.equals(ImmCode.Rs, ".zero")) ImmCode.Rs = "zero";
-                    else {
-                        Address RsAddr = VirFuncVarPos.get(ImmCode.Rs);
-                        LCode RsLoad = new LCode("lw", "s0", "sp", RsAddr.Offset, Code.Line);
-                        ImmCode.Rs = "s0";
-                        NewBlock.CodeList.add(RsLoad);
-                    }
-                    if (Objects.equals(ImmCode.Rd, ".temp")){
-                        ImmCode.Rd = "t0";
-                        NewBlock.CodeList.add(ImmCode);
-                    }
-                    else if (Objects.equals(ImmCode.Rd, ".temp1")){
-                        ImmCode.Rd = "t1";
-                        NewBlock.CodeList.add(ImmCode);
-                    }
-                    else {
-                        Address RdAddr = VirFuncVarPos.get(ImmCode.Rd);
-                        SCode RdStore = new SCode("sw", "s0", "sp", RdAddr.Offset, Code.Line);
-                        ImmCode.Rd = "s0";
-                        NewBlock.CodeList.add(ImmCode);
-                        NewBlock.CodeList.add(RdStore);
-                    }
-
+                    ImmCode.SetTrue(TrueReg(ImmCode.VirRd,ImmCode.VirRs,VirNull,Code,NewBlock));
                 }
                 else if(Code instanceof SCode){
                     SCode StoreCode = (SCode) Code;
-                    if(Objects.equals(StoreCode.Rs1,".temp1")){
-                        StoreCode.Rs1 = "t1";
-                        StoreCode.Imm = 0;
-                    }
-                    else  if(Objects.equals(StoreCode.Rs1,".temp")){
-                        StoreCode.Rs1 = "t0";
-                        StoreCode.Imm = 0;
-                    }
-                    else{
-                        Address RsAddr = VirFuncVarPos.get(StoreCode.Rs1);
-                        LCode RsLoad = new LCode("lw","s0","sp",RsAddr.Offset,Code.Line);
-                        StoreCode.Rs1 = "s0";
-                        NewBlock.CodeList.add(RsLoad);
-                    }
-                    if(Objects.equals(StoreCode.Rs2, ".temp")) {
-                        StoreCode.Rs2 = "t0";
-                        StoreCode.Imm = 0;
-                        NewBlock.CodeList.add(StoreCode);
-                    }
-                    else{
-                        Address PtrAddr = VirFuncVarPos.get(StoreCode.Rs2);
-                        StoreCode.Rs2 = "sp";
-                        StoreCode.Imm = PtrAddr.Offset;
-                        NewBlock.CodeList.add(StoreCode);
-                    }
+                    StoreCode.SetTrue(TrueReg(VirNull,StoreCode.VirRs1,StoreCode.VirRs2,Code,NewBlock));
                 }
                 else if(Code instanceof LCode){
                     LCode LoadCode = (LCode) Code;
-                    if(Objects.equals(LoadCode.Rs, ".temp")) {
-                        LoadCode.Rs = "t0";
-                        LoadCode.Offset = 0;
-                    }
-                    else if(Objects.equals(LoadCode.Rs, ".temp1")) {
-                        LoadCode.Rs = "t1";
-                        LoadCode.Offset = 0;
-                    }
-                    else{
-                        Address PtrAddr = VirFuncVarPos.get(LoadCode.Rs);
-                        LoadCode.Rs = "sp";
-                        LoadCode.Offset = PtrAddr.Offset;
-                    }
-                    if(Objects.equals(LoadCode.Rd, ".temp1")) {
-                        LoadCode.Rd = "t1";
-                        NewBlock.CodeList.add(LoadCode);
-                    }
-                    else if(Objects.equals(LoadCode.Rd, ".temp")) {
-                        LoadCode.Rd = "t0";
-                        NewBlock.CodeList.add(LoadCode);
-                    }
-                    else{
-                        Address RdAddr = VirFuncVarPos.get(LoadCode.Rd);
-                        LoadCode.Rd = "s0";
-                        SCode RdStore = new SCode("sw","s0","sp",RdAddr.Offset,Code.Line);
-                        NewBlock.CodeList.add(LoadCode);
-                        NewBlock.CodeList.add(RdStore);
-                    }
-
+                    LoadCode.SetTrue(TrueReg(LoadCode.VirRd,LoadCode.VirRs,VirNull,Code,NewBlock));
                 }
                 else if(Code instanceof RCode){
-                    RCode OperationCode = (RCode) Code;
-                    Address RdAddr = VirFuncVarPos.get(OperationCode.Rd);
-                    if(Objects.equals(OperationCode.Rs1,".temp1")){
-                        OperationCode.Rs1 = "t1";
-                    }
-                    else  if(Objects.equals(OperationCode.Rs1,".temp")){
-                        OperationCode.Rs1 = "t0";
-                    }
-                    else{
-                        Address Rs1Addr = VirFuncVarPos.get(OperationCode.Rs1);
-                        LCode Rs1Load = new LCode("lw","s0","sp",Rs1Addr.Offset,Code.Line);
-                        OperationCode.Rs1 = "s0";
-                        NewBlock.CodeList.add(Rs1Load);
-                    }
-                    if(Objects.equals(OperationCode.Rs2,".temp")){
-                        OperationCode.Rs2 = "t0";
-                    }
-                    else{
-                        Address Rs2Addr = VirFuncVarPos.get(OperationCode.Rs2);
-                        LCode Rs2Load = new LCode("lw","s1","sp",Rs2Addr.Offset,Code.Line);
-                        OperationCode.Rs2 = "s1";
-                        NewBlock.CodeList.add(Rs2Load);
-                    }
-                    if(Objects.equals(OperationCode.Rd,".temp")){
-                        OperationCode.Rd = "t0";
-                        NewBlock.CodeList.add(OperationCode);
-                    }
-                    else   if(Objects.equals(OperationCode.Rd,".temp1")){
-                        OperationCode.Rd = "t1";
-                        NewBlock.CodeList.add(OperationCode);
-                    }
-                    else {
-                        SCode RdStore = new SCode("sw", "s0", "sp", RdAddr.Offset, Code.Line);
-                        OperationCode.Rd = "s0";
-                        NewBlock.CodeList.add(OperationCode);
-                        NewBlock.CodeList.add(RdStore);
-                    }
+                   RCode OpCode = (RCode) Code;
+                   OpCode.SetTrue(TrueReg(OpCode.VirRd,OpCode.VirRs1,OpCode.VirRs2,Code,NewBlock));
                 }
                 else if(Code instanceof BCode) {
                     BCode BranchCode = (BCode) Code;
-                    Address Rs1Addr = VirFuncVarPos.get(BranchCode .Rs1);
-                    LCode Rs1Load = new LCode("lw","s0","sp",Rs1Addr.Offset,Code.Line);
-                    BranchCode.Rs1 = "s0";
-                    NewBlock.CodeList.add(Rs1Load);
-                    if(Objects.equals(BranchCode.Rs2,".zero")){
-                        BranchCode.Rs2 = "zero";
-                    }
-                    else{
-                        Address Rs2Addr = VirFuncVarPos.get(BranchCode .Rs2);
-                        LCode Rs2Load = new LCode("lw","s1","sp",Rs2Addr.Offset,Code.Line);
-                        BranchCode.Rs2 = "s1";
-                        NewBlock.CodeList.add(Rs2Load);
-                    }
-                    BranchCode.Imm = LabelToClang.get(BranchCode.Imm);
-                    NewBlock.CodeList.add(BranchCode);
+                    BranchCode.SetTrue(TrueReg(VirNull,BranchCode.VirRs1,BranchCode.VirRs2,Code,NewBlock));
                 }
                 else if(Code instanceof MCode){
                     MCode ManageCode = (MCode) Code;
@@ -364,131 +350,25 @@ public class CodeGenerator {
                 }
                 else if(Code instanceof UCode){
                     UCode UpperCode = (UCode) Code;
-                    if(Objects.equals(UpperCode.Rd,".temp")){
-                        UpperCode.Rd = "t0";
-                        NewBlock.CodeList.add(UpperCode);
-                    }
-                    else if(Objects.equals(UpperCode.Rd,".temp1")){
-                        UpperCode.Rd = "t1";
-                        NewBlock.CodeList.add(UpperCode);
-                    }
-                    else{
-                        Address RdAddr = VirFuncVarPos.get(UpperCode.Rd);
-                        SCode RdStore= new SCode("sw","s0","sp",RdAddr.Offset,Code.Line);
-                        UpperCode.Rd = "s0";
-                        NewBlock.CodeList.add(UpperCode);
-                        NewBlock.CodeList.add(RdStore);
-                    }
-
+                    UpperCode.SetTrue(TrueReg(UpperCode.VirRd,VirNull,VirNull,Code,NewBlock));
                 }
                 else{
                     PCode PesudoCode = (PCode) Code;
-                    if(Objects.equals(PesudoCode.Rs, ".return")) PesudoCode.Rs = "a0";
-                    else if(Objects.equals(PesudoCode.Rs,".temp")) PesudoCode.Rs = "t0";
-                    else{
-                        Address RsAddr = VirFuncVarPos.get(PesudoCode.Rs);
-                        LCode RsLoad = new LCode("lw","s0","sp",RsAddr.Offset,Code.Line);
-                        PesudoCode.Rs = "s0";
-                        NewBlock.CodeList.add(RsLoad);
-                    }
-                    if(PesudoCode.Rd.length() > 6 && Objects.equals(PesudoCode.Rd.substring(0,6),".param")){
-                        PesudoCode.Rd = "a"+PesudoCode.Rd.substring(6);
-                        NewBlock.CodeList.add(PesudoCode);
-                    }
-                    else if(Objects.equals(PesudoCode.Rd,".return")){
-                        PesudoCode.Rd = "a0";
-                        NewBlock.CodeList.add(PesudoCode);
-                    }
-                    else {
-                        Address RdAddr = VirFuncVarPos.get(PesudoCode.Rd);
-                        SCode RdStore = new SCode("sw", "s0", "sp", RdAddr.Offset, Code.Line);
-                        PesudoCode.Rd = "s0";
-                        NewBlock.CodeList.add(PesudoCode);
-                        NewBlock.CodeList.add(RdStore);
-                    }
+                    PesudoCode.SetTrue(TrueReg(PesudoCode.VirRd,PesudoCode.VirRs,VirNull,Code,NewBlock));
                 }
             }
             NewBlockList.add(NewBlock);
         }
         return NewBlockList;
     }
-    List<BlockSection> StackOffsetFlush(FunctionSection Func,Integer StackSize){
-        List<BlockSection> Blocks = new ArrayList<>();
-        Blocks.add(Func.Start);
-        Blocks.addAll(Func.BlocksCode);
-        List<BlockSection> NewBlocks = new ArrayList<>();
-        for(BlockSection Block : Blocks) {
-            BlockSection NewBlock = new BlockSection(Block.BlockLable,Block.IRBlockLabel);
-            for (BaseCode Code : Block.CodeList){
-                if (Code instanceof SCode ) {
-                    SCode Store = (SCode) Code;
-                    if (Objects.equals(Store.Rs2, "sp")) Store.Imm += StackSize;
-                    if(Store.Imm >= 2048){
-                        UCode NewLui  = new UCode("li","t0",Store.Imm.toString(),Store.Line);
-                        RCode NewAdd  = new RCode("add",Store.Rs2,Store.Rs2,"t0", Store.Line);
-                        Store.Imm = 0;
-                        NewBlock.CodeList.add(NewLui);
-                        NewBlock.CodeList.add(NewAdd);
-                    }
-                    NewBlock.CodeList.add(Store);
-                }
-                else if(Code instanceof LCode) {
-
-                    LCode Load = (LCode) Code;
-
-                    if (Objects.equals(Load.Rs, "sp")) Load.Offset += StackSize;
-                    if(Load.Offset >= 2048){
-                        UCode NewLui  = new UCode("li","t0",Load.Offset.toString(),Load.Line);
-                        RCode NewAdd  = new RCode("add",Load.Rs,Load.Rs,"t0", Load.Line);
-                        Load.Offset = 0;
-                        NewBlock.CodeList.add(NewLui);
-                        NewBlock.CodeList.add(NewAdd);
-                    }
-                    NewBlock.CodeList.add(Load);
-                }
-                else if(Code instanceof ICode){
-                    ICode Imm = (ICode) Code;
-                    String imm = Imm.Imm;
-                    if(imm.length()>4 && imm.startsWith("(sp)")){
-                        Integer Offset = Integer.parseInt(imm.substring(4))+StackSize;
-                        if(Offset > 2047 ||Offset < -2048){
-                            UCode Li = new UCode("li","t0",Offset.toString(),Imm.Line);
-                            RCode Add = new RCode("add","sp","sp","t0", Imm.Line);
-                            NewBlock.CodeList.add(Li);
-                            NewBlock.CodeList.add(Add);
-                        }
-                        else {
-                            Imm.Imm = Integer.toString(Offset);
-                            Imm.Rs = "sp";
-                            NewBlock.CodeList.add(Code);
-                        }
-                    }
-                    else  NewBlock.CodeList.add(Code);
-
-                }
-                else NewBlock.CodeList.add(Code);
-            }
-            NewBlocks.add(NewBlock);
+    Integer GetVirtualReg(String User){
+        if(VirName.containsKey(User)) return VirName.get(User);
+        else {
+            Integer Ret = VirName.size();
+            InvVirName.put(Ret,User);
+            VirName.put(User,Ret);
+            return Ret;
         }
-        return NewBlocks;
-    }
-    Address GetVirtualReg(String User){
-        if(IRToVir.containsKey(User)) return VirFuncVarPos.get(IRToVir.get(User));
-        if(User.charAt(0) == '.'){
-            Address NewStackPos = new Address("",0,Boolean.TRUE,User);
-            return NewStackPos;
-        }
-        StackBottom -= 4;
-        Address NewStackPos = new Address("sp",StackBottom,Boolean.FALSE,Integer.toString(++Cnt));
-        IRToVir.put(User,NewStackPos.VirName);
-        VirFuncVarPos.put(NewStackPos.VirName,NewStackPos);
-        return NewStackPos;
-    }
-    IRFunc FindFunc(String FuncName){
-        for(IRModule module:ModuleList) {
-            if (module.FindFunc(FuncName) != null) return module.FindFunc(FuncName);
-        }
-        return Global.FindFunc(FuncName);
     }
     void BlockGen(IRBlock irBlock,FunctionSection func){
         if(irBlock == null) return;
@@ -503,294 +383,216 @@ public class CodeGenerator {
             ++InstrLine;
             if(Instr instanceof AllocaInstr){
                 AllocaInstr NewIRAlloc = (AllocaInstr) Instr;
-        //        StackTable.put(StackBottom, NewIRAlloc.Rd);
-                Address Rd = GetVirtualReg(NewIRAlloc.Rd);
+                Integer VirRd = GetVirtualReg(NewIRAlloc.Rd);
                 StackBottom -= 4;
-                ICode Addi = new ICode("addi",".temp",".zero","(sp)"+StackBottom,InstrLine);
-                SCode Store = new SCode("sw",".temp",Rd.VirName,0,InstrLine);
+                ICode Addi = new ICode(OpType.addi,VirT0,VirSp,StackBottom.toString(),InstrLine);
+                StackBottom -= 4;
+                VirStack.put(VirRd,StackBottom.toString());
+                SCode Store = new SCode(OpType.sw,VirT0,VirSp,RegType.NULL,RegType.NULL,StackBottom.toString(),InstrLine);
                 NewBlockCode.CodeList.add(Addi);
                 NewBlockCode.CodeList.add(Store);
             }
             else if(Instr instanceof LoadInstr){
                 LoadInstr NewIRLoad = (LoadInstr) Instr;
-                Address RdAddress = GetVirtualReg(NewIRLoad.Rd);
-                String TmpReg = ".temp";
-                Address TmpAddr = GetVirtualReg(TmpReg);
-                String Op;
-                Op = "lw";
+                Integer VirRd = GetVirtualReg(NewIRLoad.Rd);
                 if(NewIRLoad.IsPtrGlobal){
-                    UCode NewLui = new UCode("lui", TmpAddr.VirName, "%hi("+ NewIRLoad.RsPtr+")",InstrLine);
-                    ICode NewAddi = new ICode("addi",TmpAddr.VirName,TmpAddr.VirName,"%lo("+NewIRLoad.RsPtr+")",InstrLine);
-                    LCode NewLoad = new LCode(Op, RdAddress.VirName,TmpAddr.VirName, 0,InstrLine);
+                    UCode NewLui = new UCode(OpType.lui, VirT0,RegType.NULL, "%hi("+ NewIRLoad.RsPtr+")",InstrLine);
+                    ICode NewAddi = new ICode(OpType.addi,VirT0,VirT0,"%lo("+NewIRLoad.RsPtr+")",InstrLine);
+                    LCode NewLoad = new LCode(OpType.lw, VirRd,VirT0, RegType.NULL,RegType.NULL,"0",InstrLine);
                     NewBlockCode.CodeList.add(NewLui);
                     NewBlockCode.CodeList.add(NewAddi);
                     NewBlockCode.CodeList.add(NewLoad);
                 }
                 else {
-                    Address PtrAddress = GetVirtualReg(NewIRLoad.RsPtr);
-                    LCode PtrLoad = new LCode(Op,TmpAddr.VirName,PtrAddress.VirName,0,InstrLine);
-                    LCode NewLoad = new LCode(Op, RdAddress.VirName,TmpAddr.VirName , 0, InstrLine);
+                    Integer VirPtr = GetVirtualReg(NewIRLoad.RsPtr);
+                    LCode PtrLoad = new LCode(OpType.lw,VirT0,VirPtr,RegType.NULL,RegType.NULL,"0",InstrLine);
+                    LCode NewLoad = new LCode(OpType.lw,VirRd,VirT0,RegType.NULL,RegType.NULL,"0", InstrLine);
                     NewBlockCode.CodeList.add(PtrLoad);
                     NewBlockCode.CodeList.add(NewLoad);
                 }
             }
             else if(Instr instanceof OperationInstr ){
                 OperationInstr NewIROp= ( OperationInstr) Instr;
-                String Op;
-                Address Rd = GetVirtualReg(NewIROp.Rd);
-                if(NewIROp.IsRsImm1 || NewIROp.IsRsImm2) {
-                    String Imm = NewIROp.IsRsImm1 ? NewIROp.Rs1 : NewIROp.Rs2;
-                    String ImmUser;
-                    String TmpReg = ".temp";
-                    if(NewIROp.IsRsImm1 ^ NewIROp.IsRsImm2)
-                        ImmUser = TmpReg;
-                    else ImmUser = NewIROp.Rd;
-                    Address ImmAddr = GetVirtualReg(ImmUser);
-                    long IntImm = Long.parseLong(Imm);
-                    if(IntImm > 2047 || IntImm < -2048 ){
-                        UCode NewLi = new UCode("li",ImmAddr.VirName,Long.toString(IntImm ),InstrLine);
-                    //    ICode NewLi = new ICode("addi", ImmAddr.VirName, ImmAddr.VirName, Long.toString(IntImm & 4095), InstrLine);
-                    //    NewBlockCode.CodeList.add(NewLui);
+                OpType Op;
+                Integer VirRd = GetVirtualReg(NewIROp.Rd);
+                Integer VirRs1;
+                Integer VirRs2;
+                switch (NewIROp.Op){
+                    case "icmp":{
+                        switch (NewIROp.Mode){
+                            case "ue":{
+                                Op = OpType.sue;
+                                break;
+                            }
+                            case "uge":{
+                                Op = OpType.sge;
+                                break;
+                            }
+                            case "ule":{
+                                Op = OpType.sle;
+                                break;
+                            }
+                            case "ult":{
+                                Op = OpType.slt;
+                                break;
+                            }
+                            case "ugt":{
+                                Op = OpType.sgt;
+                                break;
+                            }
+                            case "eq":{
+                                Op = OpType.seq;
+                                break;
+                            }
+                            default:throw new RuntimeException();
+                        }
+                        break;
+                    }
+                    case "add":{
+                        Op = OpType.add;
+                        break;
+                    }
+                    case "sub":{
+                        Op = OpType.sub;
+                        break;
+                    }
+                    case "div":{
+                        Op = OpType.div;
+                        break;
+                    }
+                    case "mul":{
+                        Op = OpType.mul;
+                        break;
+                    }
+                    case "rem":{
+                        Op = OpType.rem;
+                        break;
+                    }
+                    default:throw new RuntimeException();
+                }
+                if(NewIROp.IsRsImm1){
+                    int Imm1 = Integer.parseInt(NewIROp.Rs1);
+                    if(Imm1 > 2047 || Imm1 < -2048) {
+                        UCode NewLi = new UCode(OpType.li,VirT0,RegType.NULL,NewIROp.Rs1,InstrLine);
                         NewBlockCode.CodeList.add(NewLi);
                     }
                     else {
-                        Address Zero = GetVirtualReg(".zero");
-                        ICode NewLi = new ICode("addi", ImmAddr.VirName, Zero.VirName, Imm, InstrLine);
+                        ICode NewLi = new ICode(OpType.addi, VirT0, VirZero, NewIROp.Rs1, InstrLine);
                         NewBlockCode.CodeList.add(NewLi);
                     }
-                    if(NewIROp.IsRsImm1 ^ NewIROp.IsRsImm2) {
-                        Address Rs = NewIROp.IsRsImm1 ? GetVirtualReg(NewIROp.Rs2) : GetVirtualReg(NewIROp.Rs1);
-                        if(Objects.equals(NewIROp.Op, "icmp")){
-                            if(Objects.equals(NewIROp.Mode, "ult")) {
-                                Op = "slt";
-                                RCode NewOp = new RCode(Op, Rd.VirName, Rs.VirName, ImmAddr.VirName, InstrLine);
-                                NewBlockCode.CodeList.add(NewOp);
-                            }
-                            else if(Objects.equals(NewIROp.Mode, "ugt")){
-                                Op = "slt";
-                                String Tmp;
-                                Tmp  = Rs.VirName;
-                                Rs.VirName = ImmAddr.VirName;
-                                ImmAddr.VirName = Tmp;
-                                RCode NewOp = new RCode(Op, Rd.VirName, Rs.VirName,ImmAddr.VirName, InstrLine);
-                                NewBlockCode.CodeList.add(NewOp);
-                            }
-                            else if(Objects.equals(NewIROp.Mode, "uge")){
-                                Op = "slt";
-                                RCode NewOp = new RCode(Op,  Rd.VirName, Rs.VirName,ImmAddr.VirName, InstrLine);
-                                NewBlockCode.CodeList.add(NewOp);
-                                ICode NewXor = new ICode("xori", Rd.VirName, Rd.VirName,"1",InstrLine);
-                                NewBlockCode.CodeList.add(NewXor);
-                            }
-                            else if(Objects.equals(NewIROp.Mode, "ule")){
-                                Op = "slt";
-                                String Tmp;
-                                Tmp  = Rs.VirName;
-                                Rs.VirName = ImmAddr.VirName;
-                                ImmAddr.VirName = Tmp;
-                                RCode NewOp = new RCode(Op,Rd.VirName, Rs.VirName,ImmAddr.VirName, InstrLine);
-                                NewBlockCode.CodeList.add(NewOp);
-                                ICode NewXor = new ICode("xori",Rd.VirName,Rd.VirName,"1",InstrLine);
-                                NewBlockCode.CodeList.add(NewXor);
-                            }
-                            else if(Objects.equals(NewIROp.Mode, "eq")){
-                                Op = "sub";
-                                RCode NewOp = new RCode(Op, Rd.VirName, Rs.VirName,ImmAddr.VirName, InstrLine);
-                                NewBlockCode.CodeList.add(NewOp);
-                                PCode NewSeqz = new PCode("seqz",Rd.VirName,Rd.VirName,InstrLine);
-                                NewBlockCode.CodeList.add(NewSeqz);
-                            }
-                            else{
-                                Op = "sub";
-                                RCode NewOp = new RCode(Op,Rd.VirName, Rs.VirName,ImmAddr.VirName, InstrLine);
-                                NewBlockCode.CodeList.add(NewOp);
-                                PCode NewSnez = new PCode("snez",Rd.VirName,Rd.VirName,InstrLine);
-                                NewBlockCode.CodeList.add(NewSnez);
-
-                            }
-                        }
-                        else {
-                            Op = NewIROp.Op;
-                            RCode NewOp = new RCode(Op,Rd.VirName, Rs.VirName,ImmAddr.VirName, InstrLine);
-                            NewBlockCode.CodeList.add(NewOp);
-                        }
-                    }
-                  //  RegFree(ImmRd);
+                    VirRs1  = VirT0;
                 }
-                else {
-                    Address Rs1  = GetVirtualReg(NewIROp.Rs1);
-                    Address Rs2 = GetVirtualReg(NewIROp.Rs2);
-                  //  RegFree(Rs1);
-                  //  RegFree(Rs2);
-                    if(Objects.equals(NewIROp.Op, "icmp")){
-                        if(Objects.equals(NewIROp.Mode, "ult")){
-                            Op = "slt";
-                            RCode NewOp = new RCode(Op, Rd.VirName, Rs1.VirName, Rs2.VirName, InstrLine);
-                            NewBlockCode.CodeList.add(NewOp);
-                        }
-                        else if(Objects.equals(NewIROp.Mode, "ugt")){
-                            Op = "slt";
-                            String Tmp;
-                            Tmp  = Rs1.VirName;
-                            Rs1.VirName = Rs2.VirName;
-                            Rs2.VirName = Tmp;
-                            RCode NewOp = new RCode(Op,Rd.VirName, Rs1.VirName, Rs2.VirName, InstrLine);
-                            NewBlockCode.CodeList.add(NewOp);
-                        }
-                        else if(Objects.equals(NewIROp.Mode, "uge")){
-                            Op = "slt";
-                            RCode NewOp = new RCode(Op, Rd.VirName, Rs1.VirName, Rs2.VirName, InstrLine);
-                            NewBlockCode.CodeList.add(NewOp);
-                            ICode NewXor = new ICode("xori",Rd.VirName,Rd.VirName,"1",InstrLine);
-                            NewBlockCode.CodeList.add(NewXor);
-                        }
-                        else if(Objects.equals(NewIROp.Mode, "ule")){
-                            Op = "slt";
-                            String Tmp;
-                            Tmp  = Rs1.VirName;
-                            Rs1.VirName = Rs2.VirName;
-                            Rs2.VirName = Tmp;
-                            RCode NewOp = new RCode(Op, Rd.VirName, Rs1.VirName, Rs2.VirName, InstrLine);
-                            NewBlockCode.CodeList.add(NewOp);
-                            ICode NewXor = new ICode("xori",Rd.VirName,Rd.VirName,"1",InstrLine);
-                            NewBlockCode.CodeList.add(NewXor);
-                        }
-                        else if(Objects.equals(NewIROp.Mode, "eq")){
-                            Op = "sub";
-                            RCode NewOp = new RCode(Op, Rd.VirName, Rs1.VirName, Rs2.VirName, InstrLine);
-                            NewBlockCode.CodeList.add(NewOp);
-                            PCode NewSeqz = new PCode("seqz",Rd.VirName,Rd.VirName,InstrLine);
-                            NewBlockCode.CodeList.add(NewSeqz);
-                        }
-                        else{
-                            Op = "sub";
-                            RCode NewOp = new RCode(Op, Rd.VirName, Rs1.VirName, Rs2.VirName, InstrLine);
-                            NewBlockCode.CodeList.add(NewOp);
-                            PCode NewSnez = new PCode("snez",Rd.VirName,Rd.VirName,InstrLine);
-                            NewBlockCode.CodeList.add(NewSnez);
-
-                        }
+                else VirRs1 = GetVirtualReg(NewIROp.Rs1);
+                if(NewIROp.IsRsImm2){
+                    int Imm2 = Integer.parseInt(NewIROp.Rs2);
+                    if(Imm2 > 2047 || Imm2 < -2048) {
+                        UCode NewLi = new UCode(OpType.li,VirT1,RegType.NULL,NewIROp.Rs2,InstrLine);
+                        NewBlockCode.CodeList.add(NewLi);
                     }
                     else {
-                        Op = NewIROp.Op;
-                        RCode NewOp = new RCode(Op, Rd.VirName, Rs1.VirName, Rs2.VirName, InstrLine);
-                        NewBlockCode.CodeList.add(NewOp);
+                        ICode NewLi = new ICode(OpType.addi, VirT1, VirZero, NewIROp.Rs2, InstrLine);
+                        NewBlockCode.CodeList.add(NewLi);
                     }
+                    VirRs2  = VirT1;
                 }
+                else VirRs2 = GetVirtualReg(NewIROp.Rs2);
+                RCode NewOp = new RCode(Op,VirRd,VirRs1,VirRs2,RegType.NULL,RegType.NULL,RegType.NULL, InstrLine);
+                NewBlockCode.CodeList.add(NewOp);
             }
             else if(Instr instanceof StoreInstr){
                 StoreInstr NewIRStore = (StoreInstr)  Instr;
-                String Op;
-                Address Ptr;
-                Address Rs;
-                Op = "sw";
-                if(NewIRStore.IsPtrGlobal){
-                    Ptr = GetVirtualReg(".temp");
-                    UCode NewLui = new UCode("lui",Ptr.VirName ,"%hi("+NewIRStore.Ptr+")",InstrLine);
-                    ICode NewAddi = new ICode("addi",Ptr.VirName ,Ptr.VirName,"%lo("+NewIRStore.Ptr+")",InstrLine);
+                Integer VirPtr;
+                Integer VirRs;
+                if(NewIRStore.IsPtrGlobal) {
+                    UCode NewLui = new UCode(OpType.lui, VirT0, RegType.NULL,"%hi(" + NewIRStore.Ptr + ")", InstrLine);
+                    ICode NewAddi = new ICode(OpType.addi, VirT0, VirT0, "%lo(" + NewIRStore.Ptr + ")", InstrLine);
                     NewBlockCode.CodeList.add(NewLui);
                     NewBlockCode.CodeList.add(NewAddi);
+                    VirPtr = VirT0;
                 }
-                else{
-                    Address TmpAddr = GetVirtualReg(".temp");
-                    Ptr = GetVirtualReg(NewIRStore.Ptr);
-                    LCode PtrLoad = new LCode("lw",TmpAddr.VirName,Ptr.VirName,0,InstrLine);
-                    NewBlockCode.CodeList.add(PtrLoad);
-                    Ptr = TmpAddr;
-                }
+                else VirPtr = GetVirtualReg(NewIRStore.Ptr);
                 if(NewIRStore.IsRsGlobal){
-                    Rs = GetVirtualReg(".temp1");
-                    UCode NewLui = new UCode("lui",Rs.VirName ,"%hi("+NewIRStore.Rs+")",InstrLine);
-                    ICode NewAddi = new ICode("addi",Rs.VirName ,Rs.VirName ,"%lo("+NewIRStore.Rs+")",InstrLine);
+                    UCode NewLui = new UCode(OpType.lui,VirT1 ,RegType.NULL,"%hi("+NewIRStore.Rs+")",InstrLine);
+                    ICode NewAddi = new ICode(OpType.addi,VirT1 ,VirT1 ,"%lo("+NewIRStore.Rs+")",InstrLine);
                     NewBlockCode.CodeList.add(NewLui);
                     NewBlockCode.CodeList.add(NewAddi);
+                    VirRs = VirT1;
                 }
-                else {
-                    Rs = GetVirtualReg(NewIRStore.Rs);
-                }
-                SCode NewStore = new SCode(Op,Rs.VirName,Ptr.VirName, 0,InstrLine);
+                else VirRs = GetVirtualReg(NewIRStore.Rs);
+                SCode NewStore = new SCode(OpType.sw,VirRs,VirPtr,RegType.NULL,RegType.NULL,"0",InstrLine);
                 NewBlockCode.CodeList.add(NewStore);
             }
             else if(Instr instanceof GetelementInstr) {
                 GetelementInstr NewIRGet = (GetelementInstr)  Instr;
 
                 Integer RdSize = IRTypeToSize(NewIRGet.RdType);
-                String TmpReg = ".temp";
-                String TmpReg2 = ".temp1";
-                Address Ptr = GetVirtualReg(NewIRGet.Ptr);
+                Integer VirPtr;
                 if (NewIRGet.IsPtrGlobal) {
-                    UCode NewLui = new UCode("lui", Ptr.VirName, "%hi(" + NewIRGet.Ptr + ")",InstrLine);
-                    ICode NewAddi = new ICode("addi", Ptr.VirName, Ptr.VirName, "%lo(" + NewIRGet.Ptr + ")",InstrLine);
+                    UCode NewLui = new UCode(OpType.lui, VirT0,RegType.NULL,"%hi(" + NewIRGet.Ptr + ")",InstrLine);
+                    ICode NewAddi = new ICode(OpType.addi, VirT0,  VirT0, "%lo(" + NewIRGet.Ptr + ")",InstrLine);
                     NewBlockCode.CodeList.add(NewLui);
                     NewBlockCode.CodeList.add(NewAddi);
+                    VirPtr = VirT0;
                 }
-                Address Imm = GetVirtualReg(TmpReg);
-                Address Index = GetVirtualReg(TmpReg2);
-                Address Rd = GetVirtualReg(NewIRGet.Rd);
-                Address IndexPtr = GetVirtualReg(NewIRGet.Index);
+                else VirPtr = GetVirtualReg(NewIRGet.Ptr);
+                Integer VirRd = GetVirtualReg(NewIRGet.Rd);
+                Integer VirIndexPtr = GetVirtualReg(NewIRGet.Index);
                 if(Objects.equals(NewIRGet.Mode, "index")) {
-                    Address Zero = GetVirtualReg(".zero");
-                    LCode NewIndexLoad = new LCode("lw",Index.VirName,IndexPtr.VirName,0,InstrLine);
-                    ICode NewLi = new ICode("addi",Imm.VirName,Zero.VirName, RdSize.toString(),InstrLine);
-                    RCode NewMuli = new RCode("mul", Index.VirName, Index.VirName, Imm.VirName, InstrLine);
-                    ICode NewAddi = new ICode("addi", Imm.VirName, Index.VirName, "4", InstrLine);
-                 //   RCode NewAdd = new RCode("add", Imm.VirName, Index.VirName, Imm.VirName, InstrLine);
+                    LCode NewIndexLoad = new LCode(OpType.lw,VirT1,VirIndexPtr,RegType.NULL,RegType.NULL,"0",InstrLine);
+                    ICode NewLi = new ICode(OpType.addi,VirT2,VirZero,RdSize.toString(),InstrLine);
+                    RCode NewMuli = new RCode(OpType.mul, VirT1, VirT2, VirT1,RegType.NULL,RegType.NULL,RegType.NULL, InstrLine);
+                    ICode NewAddi = new ICode(OpType.addi, VirT2,VirT1, "4", InstrLine);
                     NewBlockCode.CodeList.add(NewIndexLoad);
                     NewBlockCode.CodeList.add(NewLi);
                     NewBlockCode.CodeList.add(NewMuli);
                     NewBlockCode.CodeList.add(NewAddi);
-               //     NewBlockCode.CodeList.add(NewAdd);
                 }
                 else if(Objects.equals(NewIRGet.Mode, "offset")){
-                        Address Zero = GetVirtualReg(".zero");
-                        ICode NewOffAddi = new ICode("addi", Imm.VirName, Zero.VirName, NewIRGet.Offset.toString(), InstrLine);
+                        ICode NewOffAddi = new ICode(OpType.addi, VirT2, VirZero, NewIRGet.Offset.toString(), InstrLine);
                         NewBlockCode.CodeList.add(NewOffAddi);
                 }
-                RCode NewPtrAdd = new RCode("add", Rd.VirName,Ptr.VirName,Imm.VirName,InstrLine);
+                RCode NewPtrAdd = new RCode(OpType.add,VirRd ,VirPtr,VirT2,RegType.NULL,RegType.NULL,RegType.NULL,InstrLine);
                 NewBlockCode.CodeList.add(NewPtrAdd);
             }
             else if(Instr instanceof BranchInstr){
                 BranchInstr NewIRBr = (BranchInstr)  Instr;
                 if(Objects.equals(NewIRBr.Condition, "")){
-                    JCode NewJump = new JCode("j", NewIRBr.Label1,InstrLine);
+                    JCode NewJump = new JCode(OpType.j, NewIRBr.Label1,InstrLine);
                     NewBlockCode.CodeList.add(NewJump);
                 }
                 else {
-
-                    Address Condi = GetVirtualReg(NewIRBr.Condition);
-                    Address Zero = GetVirtualReg(".zero");
-                    BCode NewBrT = new BCode("beq", Condi.VirName, Zero.VirName, NewIRBr.Label2,InstrLine);
-                    JCode NewBrF = new JCode("j", NewIRBr.Label1,InstrLine);
+                    Integer VirCondi = GetVirtualReg(NewIRBr.Condition);
+                    BCode NewBrT = new BCode(OpType.beq, VirCondi, VirZero, NewIRBr.Label2,InstrLine);
+                    JCode NewBrF = new JCode(OpType.j, NewIRBr.Label1,InstrLine);
                     NewBlockCode.CodeList.add(NewBrT);
                     NewBlockCode.CodeList.add(NewBrF);
                 }
             }
             else if(Instr instanceof FuncCallInstr){
                 FuncCallInstr NewIRCall = (FuncCallInstr)  Instr;
-          //      System.out.println(NewIRCall.FuncName);
                 List<String> CallParams = NewIRCall.Param;
                 for(int i = 0 ; i < CallParams.size();i++) {
+                    //TODO 函数寄存器分配
+                    //TODO 根本不分配函数参数？我觉得可以有
                     String CallParamName = CallParams.get(i);
-                    Address Rd = GetVirtualReg(".param"+i);
-                    Address Rs = GetVirtualReg(CallParamName);
+                    Integer VirRd = GetVirtualReg(".param"+i);
+                    Integer VirRs = GetVirtualReg(CallParamName);
                     if(NewIRCall.IsGlobal.get(i)) {
-                        UCode NewLui = new UCode("lui", Rs.VirName, "%hi(" + CallParamName + ")",InstrLine);
-                        ICode NewAddi = new ICode("addi", Rs.VirName, Rs.VirName, "%lo(" + CallParamName + ")",InstrLine);
+                        UCode NewLui = new UCode(OpType.lui,VirRs, RegType.NULL,"%hi(" + CallParamName + ")",InstrLine);
+                        ICode NewAddi = new ICode(OpType.addi,VirRs, VirRs, "%lo(" + CallParamName + ")",InstrLine);
                         NewBlockCode.CodeList.add(NewLui);
                         NewBlockCode.CodeList.add(NewAddi);
                     }
-                    PCode NewMv = new PCode("mv", Rd.VirName, Rs.VirName,InstrLine);
+                    PCode NewMv = new PCode(OpType.mv, VirRd, VirRs,InstrLine);
                     NewBlockCode.CodeList.add(NewMv);
                 }
-                CCode NewCall = new CCode("call", NewIRCall.FuncName,InstrLine);
+                CCode NewCall = new CCode(OpType.call, NewIRCall.FuncName,InstrLine);
                 NewBlockCode.CodeList.add(NewCall);
                 if(!Objects.equals(NewIRCall.Rd, "")){
-                    Address Rd = GetVirtualReg(NewIRCall.Rd);
-                    Address Ret = GetVirtualReg(".return");
-                    PCode NewMv = new PCode("mv", Rd.VirName, Ret.VirName,InstrLine);
+                    Integer VirRd = GetVirtualReg(NewIRCall.Rd);
+                    PCode NewMv = new PCode(OpType.mv,VirRd, VirA0,InstrLine);
                     NewBlockCode.CodeList.add(NewMv);
                 }
-           //     TempOutStack(InStackTemp,FuncVarPos,NewBlockCode);
             }
             else if(Instr instanceof PhiInstr ){
             }
@@ -798,9 +600,8 @@ public class CodeGenerator {
                 //和call一样，需要交流
                 ReturnInstr NewIRRet = ( ReturnInstr)  Instr;
                 if(Objects.equals(NewIRRet.Type, "void")) break;
-                Address Rs = GetVirtualReg(NewIRRet.Rs);
-                Address Rd = GetVirtualReg(".return");
-                PCode Move = new PCode("mv",Rd.VirName,Rs.VirName,InstrLine);
+                Integer VirRs = GetVirtualReg(NewIRRet.Rs);
+                PCode Move = new PCode(OpType.mv,VirA0,VirRs,InstrLine);
                 NewBlockCode.CodeList.add(Move);
             }
         }

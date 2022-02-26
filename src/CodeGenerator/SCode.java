@@ -3,16 +3,25 @@ package CodeGenerator;
 import java.io.PrintStream;
 
 public class SCode extends BaseCode{
-    String Op;
-    String Rs1;
-    String Rs2;
-    Integer Imm;
-    SCode(String op,String rs1,String rs2,Integer imm,Integer Line){
+    OpType Op;
+    RegType Rs1;
+    Integer VirRs1;
+    RegType Rs2;
+    Integer VirRs2;
+    String Imm;
+    SCode(OpType op,Integer  virRs1,Integer  virRs2, RegType rs1,RegType rs2,String imm,Integer Line){
         super(CodeType.SType, Line);
         Op = op;
-        Rs1  = rs1;
+        VirRs1  = virRs1;
+        VirRs2 = virRs2;
+        Rs1 = rs1;
         Rs2 = rs2;
         Imm = imm;
+    }
+
+    void SetTrue(Triple tr){
+        Rs1 = tr.Rs1;
+        Rs2 = tr.Rs2;
     }
 
     @Override

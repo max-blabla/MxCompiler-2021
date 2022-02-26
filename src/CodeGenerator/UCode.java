@@ -3,14 +3,20 @@ package CodeGenerator;
 import java.io.PrintStream;
 
 public class UCode extends BaseCode{
-    String Rd;
-    String Op;
+    RegType Rd;
+    Integer VirRd;
+    OpType Op;
     String Imm;
-    UCode(String op, String rd, String imm,Integer Line){
+    UCode(OpType op, Integer virRd,RegType rd, String imm,Integer Line){
         super(CodeType.UType,Line);
-        Rd = rd;
+        VirRd = virRd;
         Imm = imm;
         Op = op;
+        Rd = rd;
+    }
+
+    void SetTrue(Triple tr){
+        Rd = tr.Rd;
     }
 
     @Override
