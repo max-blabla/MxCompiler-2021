@@ -12,7 +12,7 @@ public enum OpType {
     mv,
     call,
     seq,
-    sue,
+    sne,
     slt,
     sge,
     sle,

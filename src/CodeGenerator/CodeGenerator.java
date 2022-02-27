@@ -420,8 +420,8 @@ public class CodeGenerator {
                 switch (NewIROp.Op){
                     case "icmp":{
                         switch (NewIROp.Mode){
-                            case "ue":{
-                                Op = OpType.sue;
+                            case "ne":{
+                                Op = OpType.sne;
                                 break;
                             }
                             case "uge":{
