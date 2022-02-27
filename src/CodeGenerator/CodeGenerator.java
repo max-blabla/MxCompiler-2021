@@ -223,14 +223,14 @@ public class CodeGenerator {
                     RCode SubCode = new RCode(OpType.sub,VirT0,OpCode.VirRs1,OpCode.VirRs2,RegType.NULL,RegType.NULL,RegType.NULL,OpCode.Line);
                     switch (OpCode.Op){
                         case seq:{
-                            SubCode.VirRd = OpCode.VirRd;
+                            ICode XorCode = new ICode(OpType.xori,OpCode.VirRd,VirT0,"1",OpCode.Line);
+                            NewBlock.CodeList.add(XorCode);
                             NewBlock.CodeList.add(SubCode);
                             break;
                         }
                         case sne:{
-                            ICode XorCode = new ICode(OpType.xori,OpCode.VirRd,VirT0,"1",OpCode.Line);
+                            SubCode.VirRd = OpCode.VirRd;
                             NewBlock.CodeList.add(SubCode);
-                            NewBlock.CodeList.add(XorCode);
                             break;
                         }
                         case sge:{
@@ -417,6 +417,13 @@ public class CodeGenerator {
     }
     Integer GetVirtualReg(String User){
         if(VirName.containsKey(User)) return VirName.get(User);
+        else if(User.startsWith(".param")){
+            int ParamIndex = Integer.parseInt(User.substring(6));
+            Integer Ret = -ParamIndex;
+            InvVirName.put(Ret,User);
+            VirName.put(User,Ret);
+            return Ret;
+        }
         else {
             Integer Ret = VirName.size();
             InvVirName.put(Ret,User);
@@ -649,11 +656,11 @@ public class CodeGenerator {
                     //TODO 函数寄存器分配
                     //TODO 根本不分配函数参数？我觉得可以有
                     String CallParamName = CallParams.get(i);
-                    Integer VirRd = GetVirtualReg(".param"+i);
+                    Integer VirRd = GetVirtualReg(".param"+(i+1));
                     Integer VirRs = GetVirtualReg(CallParamName);
                     if(NewIRCall.IsGlobal.get(i)) {
-                        UCode NewLui = new UCode(OpType.lui,VirRs, RegType.NULL,"%hi(" + CallParamName + ")",InstrLine);
-                        ICode NewAddi = new ICode(OpType.addi,VirRs, VirRs, "%lo(" + CallParamName + ")",InstrLine);
+                        UCode NewLui = new UCode(OpType.lui,VirT0, RegType.NULL,"%hi(" + CallParamName + ")",InstrLine);
+                        ICode NewAddi = new ICode(OpType.addi,VirRs, VirT0, "%lo(" + CallParamName + ")",InstrLine);
                         NewBlockCode.CodeList.add(NewLui);
                         NewBlockCode.CodeList.add(NewAddi);
                     }
