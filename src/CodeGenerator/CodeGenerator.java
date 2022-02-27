@@ -630,7 +630,7 @@ public class CodeGenerator {
                     NewBlockCode.CodeList.add(NewAddi);
                 }
                 else if(Objects.equals(NewIRGet.Mode, "offset")){
-                        ICode NewOffAddi = new ICode(OpType.addi, VirT2, VirZero, NewIRGet.Offset.toString(), InstrLine);
+                        ICode NewOffAddi = new ICode(OpType.addi, VirT2, VirZero, Integer.toString(NewIRGet.Offset/8), InstrLine);
                         NewBlockCode.CodeList.add(NewOffAddi);
                 }
                 RCode NewPtrAdd = new RCode(OpType.add,VirRd ,VirPtr,VirT2,RegType.NULL,RegType.NULL,RegType.NULL,InstrLine);
