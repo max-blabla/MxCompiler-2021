@@ -1227,13 +1227,10 @@ public class IRBuilder {
             CurBlock.InsertInstr(XOrOp);
         }
         else if(Root.getType() == ExprType.Not){
-                String AndReg = Rd;
                 Rd = Func.NewReg();
                 Ret.Name = Rd;
                 Ret.Type = Left.Type;
-                OperationInstr AndOp = new OperationInstr("and",Left.Name,"1",Left.Type,Left.Type,AndReg,"");
-                OperationInstr XOrOp = new OperationInstr("xor",Left.Name,"1",Left.Type,Left.Type,Ret.Name,"");
-            CurBlock.InsertInstr(AndOp);
+                OperationInstr XOrOp = new OperationInstr("icmp",Left.Name,"0",Left.Type,Left.Type,Ret.Name,"eq");
             CurBlock.InsertInstr(XOrOp);
 
         }
