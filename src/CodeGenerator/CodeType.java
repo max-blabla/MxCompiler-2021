@@ -10,5 +10,6 @@ enum CodeType {
     UType,
     MType,
     CType,
-    PType;
+    PType,
+    BPType
 }

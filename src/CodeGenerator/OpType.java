@@ -25,5 +25,7 @@ public enum OpType {
     or,
     and,
     sll,
-    sra
+    sra,
+    xori,
+    beqz
 }

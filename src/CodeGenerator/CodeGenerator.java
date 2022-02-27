@@ -204,6 +204,7 @@ public class CodeGenerator {
         StackBottom -= 16;
         BlockGen(irFunc.getStart(),NewFunc);
         BlockGen(irFunc.getEnd(),NewFunc);
+        NewFunc.BlocksCode = TransCode(NewFunc);
         NewFunc.BlocksCode = RegDistribute(NewFunc.BlocksCode);
         NewFunc.BlocksCode.add(0,Start);
         BlockSection End = NewFunc.BlocksCode.get(NewFunc.BlocksCode.size()-1);
@@ -211,6 +212,54 @@ public class CodeGenerator {
         NewFunc.BlocksCode = ImmFlush(NewFunc,StackTop-StackBottom);
         MCode Ret = new MCode("ret",0);
         FunctionsCode.add(NewFunc);
+    }
+    ArrayList<BlockSection> TransCode(FunctionSection Func){
+        ArrayList<BlockSection> NewBlocks = new ArrayList<>();
+        for(BlockSection Block : Func.BlocksCode) {
+            BlockSection NewBlock = new BlockSection(Block.BlockLable, Block.IRBlockLabel);
+            for (BaseCode Code : Block.CodeList) {
+                if(Code instanceof  RCode){
+                    RCode OpCode = (RCode) Code;
+                    RCode SubCode = new RCode(OpType.sub,VirT0,OpCode.VirRs1,OpCode.VirRs2,RegType.NULL,RegType.NULL,RegType.NULL,OpCode.Line);
+                    switch (OpCode.Op){
+                        case seq:{
+                            SubCode.VirRd = OpCode.VirRd;
+                            NewBlock.CodeList.add(SubCode);
+                            break;
+                        }
+                        case sne:{
+                            ICode XorCode = new ICode(OpType.xori,OpCode.VirRd,VirT0,"1",OpCode.Line);
+                            NewBlock.CodeList.add(SubCode);
+                            NewBlock.CodeList.add(XorCode);
+                            break;
+                        }
+                        case sge:{
+                            RCode SltCode = new RCode(OpType.slt,VirT0,OpCode.VirRs1,OpCode.VirRs2,RegType.NULL,RegType.NULL,RegType.NULL,OpCode.Line);
+                            ICode XorCode = new ICode(OpType.xori,OpCode.VirRd,VirT0,"1",OpCode.Line);
+                            NewBlock.CodeList.add(SltCode);
+                            NewBlock.CodeList.add(XorCode);
+                            break;
+                        }
+                        case sle:{
+                            RCode SltCode = new RCode(OpType.slt,VirT0,OpCode.VirRs2,OpCode.VirRs1,RegType.NULL,RegType.NULL,RegType.NULL,OpCode.Line);
+                            ICode XorCode = new ICode(OpType.xori,OpCode.VirRd,VirT0,"1",OpCode.Line);
+                            NewBlock.CodeList.add(SltCode);
+                            NewBlock.CodeList.add(XorCode);
+                            break;
+                        }
+                        case sgt:{
+                            RCode SltCode = new RCode(OpType.slt,VirT0,OpCode.VirRs2,OpCode.VirRs1,RegType.NULL,RegType.NULL,RegType.NULL,OpCode.Line);
+                            NewBlock.CodeList.add(SltCode);
+                            break;
+                        }
+                        default: NewBlock.CodeList.add(Code);
+                    }
+                }
+                else NewBlock.CodeList.add(Code);
+            }
+            NewBlocks.add(NewBlock);
+        }
+        return NewBlocks;
     }
     Integer IRTypeToSize(String Type){
         return 4;
@@ -351,6 +400,10 @@ public class CodeGenerator {
                 else if(Code instanceof UCode){
                     UCode UpperCode = (UCode) Code;
                     UpperCode.SetTrue(TrueReg(UpperCode.VirRd,VirNull,VirNull,Code,NewBlock));
+                }
+                else if(Code instanceof BPCode){
+                    BPCode BrPeCode = (BPCode) Code;
+                    BrPeCode.SetTrue(TrueReg(VirNull,BrPeCode.VirRs,VirNull,Code,NewBlock));
                 }
                 else{
                     PCode PesudoCode = (PCode) Code;
@@ -582,7 +635,7 @@ public class CodeGenerator {
                 }
                 else {
                     Integer VirCondi = GetVirtualReg(NewIRBr.Condition);
-                    BCode NewBrT = new BCode(OpType.beq, VirCondi, VirZero, NewIRBr.Label2,InstrLine);
+                    BPCode NewBrT = new BPCode(OpType.beqz, VirCondi, NewIRBr.Label2,InstrLine);
                     JCode NewBrF = new JCode(OpType.j, NewIRBr.Label1,InstrLine);
                     NewBlockCode.CodeList.add(NewBrT);
                     NewBlockCode.CodeList.add(NewBrF);
