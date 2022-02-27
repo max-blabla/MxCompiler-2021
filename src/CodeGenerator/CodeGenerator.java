@@ -211,6 +211,7 @@ public class CodeGenerator {
         TranSection(Start,End);
         NewFunc.BlocksCode = ImmFlush(NewFunc,StackTop-StackBottom);
         MCode Ret = new MCode("ret",0);
+        NewFunc.BlocksCode.get(NewFunc.BlocksCode.size()-1).CodeList.add(Ret);
         FunctionsCode.add(NewFunc);
     }
     ArrayList<BlockSection> TransCode(FunctionSection Func){
@@ -224,8 +225,8 @@ public class CodeGenerator {
                     switch (OpCode.Op){
                         case seq:{
                             ICode XorCode = new ICode(OpType.xori,OpCode.VirRd,VirT0,"1",OpCode.Line);
-                            NewBlock.CodeList.add(XorCode);
                             NewBlock.CodeList.add(SubCode);
+                            NewBlock.CodeList.add(XorCode);
                             break;
                         }
                         case sne:{
@@ -466,9 +467,9 @@ public class CodeGenerator {
                 }
                 else {
                     Integer VirPtr = GetVirtualReg(NewIRLoad.RsPtr);
-                    LCode PtrLoad = new LCode(OpType.lw,VirT0,VirPtr,RegType.NULL,RegType.NULL,"0",InstrLine);
-                    LCode NewLoad = new LCode(OpType.lw,VirRd,VirT0,RegType.NULL,RegType.NULL,"0", InstrLine);
-                    NewBlockCode.CodeList.add(PtrLoad);
+              //      LCode PtrLoad = new LCode(OpType.lw,VirT0,VirPtr,RegType.NULL,RegType.NULL,"0",InstrLine);
+                    LCode NewLoad = new LCode(OpType.lw,VirRd,VirPtr,RegType.NULL,RegType.NULL,"0", InstrLine);
+              //      NewBlockCode.CodeList.add(PtrLoad);
                     NewBlockCode.CodeList.add(NewLoad);
                 }
             }
