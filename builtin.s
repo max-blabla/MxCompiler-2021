@@ -208,7 +208,7 @@ getInt:                                 # @getInt
 	.size	getInt, .Lfunc_end6-getInt
 	.cfi_endproc
                                         # -- End function
-	.globl	_string.parseInt                # -- Begin function _string.parseInt
+	.globl	_string.parseInt                # -- Begin function parseInt
 	.p2align	2
 	.type	_string.parseInt,@function
 _string.parseInt:                               # @_string.parseInt
@@ -326,10 +326,10 @@ _string.substring:                              # @_string.substring
 	srai	a1, a0, 31
 	call	malloc
 	sw	a0, -32(s0)
-	lw	a0, -16(s0)
-	lw	a1, -20(s0)
-	add	a0, a0, a1
-	lw	a1, -32(s0)
+	lw	a0, -32(s0)
+	lw	a1, -16(s0)
+	lw	a2, -20(s0)
+	add	a1, a1, a2
 	call	strcpy
 	lw	a0, -32(s0)
 	lw	a1, -24(s0)
@@ -397,8 +397,8 @@ strcopy:                                # @strcopy
 	srai	a1, a0, 31
 	call	malloc
 	sw	a0, -24(s0)
-	lw	a0, -16(s0)
-	lw	a1, -24(s0)
+	lw	a0, -24(s0)
+	lw	a1, -16(s0)
 	call	strcpy
 	lw	a0, -24(s0)
 	lw	a1, -20(s0)
@@ -442,13 +442,13 @@ append:                                 # @append
 	srai	a1, a0, 31
 	call	malloc
 	sw	a0, -40(s0)
-	lw	a0, -16(s0)
-	lw	a1, -40(s0)
+	lw	a0, -40(s0)
+	lw	a1, -16(s0)
 	call	strcpy
-	lw	a0, -24(s0)
-	lw	a1, -40(s0)
-	lw	a2, -28(s0)
-	add	a1, a1, a2
+	lw	a0, -40(s0)
+	lw	a1, -28(s0)
+	add	a0, a0, a1
+	lw	a1, -24(s0)
 	call	strcpy
 	lw	a0, -40(s0)
 	lw	a1, -32(s0)
