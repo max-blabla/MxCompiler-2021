@@ -1242,7 +1242,7 @@ public class IRBuilder {
             StoreInstr NewStore = new StoreInstr("store",Rd,Left.Type,Ptr,Left.Type+"*",!Ptr.contains("."),false);
             CurBlock.InsertInstr(NewOp);
             CurBlock.InsertInstr(NewStore);
-            Ret.Name = Rd;
+            Ret.Name = Left.Name;
         }
         else if(Root.getType() == ExprType.RightSelfMinus){
             Boolean isGlobal = !Left.Name.contains(".");
@@ -1252,7 +1252,7 @@ public class IRBuilder {
             StoreInstr NewStore = new StoreInstr("store",Rd,Left.Type,Ptr,Left.Type+"*",!Ptr.contains("."),false);
             CurBlock.InsertInstr(NewOp);
             CurBlock.InsertInstr(NewStore);
-            Ret.Name = Rd;
+            Ret.Name = Left.Name;
         }
         else if(Root.getType() == ExprType.Multiply){
             Ret.Type = Left.Type;
