@@ -7,6 +7,7 @@ public enum OpType {
     lui,
     mul,
     add,
+    seqz,
     j,
     beq,
     mv,
@@ -27,5 +28,8 @@ public enum OpType {
     sll,
     sra,
     xori,
-    beqz
+    beqz,
+    ori,
+    andi,
+    bnez
 }

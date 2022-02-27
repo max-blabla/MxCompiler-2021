@@ -224,9 +224,9 @@ public class CodeGenerator {
                     RCode SubCode = new RCode(OpType.sub,VirT0,OpCode.VirRs1,OpCode.VirRs2,RegType.NULL,RegType.NULL,RegType.NULL,OpCode.Line);
                     switch (OpCode.Op){
                         case seq:{
-                            ICode XorCode = new ICode(OpType.xori,OpCode.VirRd,VirT0,"1",OpCode.Line);
+                            PCode AndCode = new PCode(OpType.seqz,OpCode.VirRd,VirT0,OpCode.Line);
                             NewBlock.CodeList.add(SubCode);
-                            NewBlock.CodeList.add(XorCode);
+                            NewBlock.CodeList.add(AndCode);
                             break;
                         }
                         case sne:{
@@ -249,7 +249,7 @@ public class CodeGenerator {
                             break;
                         }
                         case sgt:{
-                            RCode SltCode = new RCode(OpType.slt,VirT0,OpCode.VirRs2,OpCode.VirRs1,RegType.NULL,RegType.NULL,RegType.NULL,OpCode.Line);
+                            RCode SltCode = new RCode(OpType.slt,OpCode.VirRd,OpCode.VirRs2,OpCode.VirRs1,RegType.NULL,RegType.NULL,RegType.NULL,OpCode.Line);
                             NewBlock.CodeList.add(SltCode);
                             break;
                         }
