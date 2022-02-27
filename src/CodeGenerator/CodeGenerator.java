@@ -273,10 +273,20 @@ public class CodeGenerator {
                 if(Code instanceof ICode){
                     ICode ImmCode = (ICode) Code;
                     if(ImmCode.Rs == RegType.sp && ImmCode.Rd != RegType.sp){
-                        Integer Offset = Integer.parseInt(ImmCode.Imm);
-                        ImmCode.Imm = Integer.toString(Offset+StackSize);
+                        Integer Offset = Integer.parseInt(ImmCode.Imm)+StackSize;
+                        if(Offset > 2047){
+                            UCode NewLi = new UCode(OpType.li,VirNull,RegType.t0, Integer.toString(Offset),ImmCode.Line);
+                            RCode NewAdd = new RCode(OpType.add,VirNull,VirNull,VirNull,ImmCode.Rd,RegType.t0,RegType.sp,ImmCode.Line);
+                            NewBlock.CodeList.add(NewLi);
+                            NewBlock.CodeList.add(NewAdd);
+                        }
+                        else {
+                            ImmCode.Imm = Integer.toString(Offset);
+                            NewBlock.CodeList.add(ImmCode);
+                        }
                     }
-                    NewBlock.CodeList.add(ImmCode);
+                    else   NewBlock.CodeList.add(ImmCode);
+
                 }
                 else if(Code instanceof SCode){
                     SCode StCode = (SCode) Code;
@@ -618,13 +628,11 @@ public class CodeGenerator {
                 }
                 else VirPtr = GetVirtualReg(NewIRGet.Ptr);
                 Integer VirRd = GetVirtualReg(NewIRGet.Rd);
-                Integer VirIndexPtr = GetVirtualReg(NewIRGet.Index);
+                Integer VirIndex = GetVirtualReg(NewIRGet.Index);
                 if(Objects.equals(NewIRGet.Mode, "index")) {
-                    LCode NewIndexLoad = new LCode(OpType.lw,VirT1,VirIndexPtr,RegType.NULL,RegType.NULL,"0",InstrLine);
                     ICode NewLi = new ICode(OpType.addi,VirT2,VirZero,RdSize.toString(),InstrLine);
-                    RCode NewMuli = new RCode(OpType.mul, VirT1, VirT2, VirT1,RegType.NULL,RegType.NULL,RegType.NULL, InstrLine);
-                    ICode NewAddi = new ICode(OpType.addi, VirT2,VirT1, "4", InstrLine);
-                    NewBlockCode.CodeList.add(NewIndexLoad);
+                    RCode NewMuli = new RCode(OpType.mul, VirT1, VirIndex, VirT2,RegType.NULL,RegType.NULL,RegType.NULL, InstrLine);
+                    ICode NewAddi = new ICode(OpType.addi, VirT2, VirT1, "4", InstrLine);
                     NewBlockCode.CodeList.add(NewLi);
                     NewBlockCode.CodeList.add(NewMuli);
                     NewBlockCode.CodeList.add(NewAddi);
