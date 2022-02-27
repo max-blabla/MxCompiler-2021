@@ -354,7 +354,7 @@ public class CodeGenerator {
         }
         else if(Rd != 0){
             NewTriple.Rd = RegType.s0;
-            SCode Store = new SCode(OpType.sw,VirNull,VirNull, RegType.s0,RegType.sp,StackPos(Rs1),Self.Line);
+            SCode Store = new SCode(OpType.sw,VirNull,VirNull, RegType.s0,RegType.sp,StackPos(Rd),Self.Line);
             Block.CodeList.add(Store);
         }
         return NewTriple;
