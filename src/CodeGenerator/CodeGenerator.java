@@ -289,7 +289,7 @@ public class CodeGenerator {
                             StCode.Rs2 = RegType.t0;
                             StCode.Imm = "0";
                         }
-                        else StCode.Imm = Integer.toString(Offset+StackSize);
+                        else StCode.Imm = Integer.toString(Offset);
                     }
                     NewBlock.CodeList.add(StCode);
                 }
@@ -305,7 +305,7 @@ public class CodeGenerator {
                             LdCode.Rs = RegType.t0;
                             LdCode.Imm = "0";
                         }
-                        else LdCode.Imm = Integer.toString(Offset+StackSize);
+                        else LdCode.Imm = Integer.toString(Offset);
                     }
                     NewBlock.CodeList.add(LdCode);
                 }
@@ -403,6 +403,7 @@ public class CodeGenerator {
                 }
                 else if(Code instanceof BPCode){
                     BPCode BrPeCode = (BPCode) Code;
+                    BrPeCode.Label = LabelToClang.get(BrPeCode.Label);
                     BrPeCode.SetTrue(TrueReg(VirNull,BrPeCode.VirRs,VirNull,Code,NewBlock));
                 }
                 else{
