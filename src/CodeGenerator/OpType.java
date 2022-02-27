@@ -20,5 +20,10 @@ public enum OpType {
     div,
     rem,
     sub,
-    li
+    li,
+    xor,
+    or,
+    and,
+    sll,
+    sra
 }

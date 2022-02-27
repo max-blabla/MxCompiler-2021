@@ -1203,6 +1203,7 @@ public class IRBuilder {
             StoreInstr NewStore = new StoreInstr("store",Rd,Left.Type,Ptr,Left.Type+"*",!Ptr.contains("."),false);
             CurBlock.InsertInstr(NewOp);
             CurBlock.InsertInstr(NewStore);
+            CurBlock.putPtr(Ret.Name,Ptr);
         }
         else if(Root.getType() == ExprType.LeftSelfMinus){
             Boolean isGlobal = !Left.Name.contains(".");

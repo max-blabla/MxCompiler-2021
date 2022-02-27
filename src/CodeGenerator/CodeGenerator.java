@@ -468,6 +468,26 @@ public class CodeGenerator {
                         Op = OpType.rem;
                         break;
                     }
+                    case "xor":{
+                        Op = OpType.xor;
+                        break;
+                    }
+                    case "or":{
+                        Op = OpType.or;
+                        break;
+                    }
+                    case "and":{
+                        Op = OpType.and;
+                        break;
+                    }
+                    case "sll":{
+                        Op = OpType.sll;
+                        break;
+                    }
+                    case "sra":{
+                        Op = OpType.sra;
+                        break;
+                    }
                     default:throw new RuntimeException();
                 }
                 if(NewIROp.IsRsImm1){
