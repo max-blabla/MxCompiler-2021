@@ -46,6 +46,8 @@ public class Main {
                     SemanticChecker SC = new SemanticChecker();
                     SC.SetProgram(AstBuilder.getGlobalAST());
                     SC.SemanticCheck();
+                    if(SC.HasLambda()) return;
+
                     PostASTBuilder PostAstBuilder = new PostASTBuilder();
                     PostAstBuilder.SetProgram(AstBuilder.getGlobalAST());
                     PostAstBuilder.ConstSpread();
