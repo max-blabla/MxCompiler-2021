@@ -173,7 +173,7 @@ public class IRBuilder {
         StringModule.Size = 32;
         for (int i = 0; i < 14; i++) {
             String ModuleName;
-            if(i <=10) ModuleName  = GlobalName;
+            if(i <10) ModuleName  = GlobalName;
             else ModuleName = IString;
             IRFunc NewLinking = new IRFunc(BuiltinFuncNames.get(i),ModuleName,BuiltinFuncRet.get(i));
             NewLinking.IsLinked = true;
