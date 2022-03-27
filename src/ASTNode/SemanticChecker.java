@@ -596,13 +596,13 @@ public class SemanticChecker extends MxBaseListener{
         }
         else if(Root instanceof ForStmtAST){
             ForStmtAST ForStmt = (ForStmtAST) Root;
+            LoopScope LS = new LoopScope();
+            ScopeStack.push(LS);
+            if(ForStmt.getInitStmt() != null) NodeCheck(ForStmt.getInitStmt() );
             if(ForStmt.ConditionExpr  != null) {
                 IdInfo Info = ExprCheck(ForStmt.getConditionExpr());
                 if (!Objects.equals(Info.Type, "bool")) throw new ErrorInfo("Condition Must Be Bool");
             }
-            LoopScope LS = new LoopScope();
-            ScopeStack.push(LS);
-            if(ForStmt.getInitStmt() != null) NodeCheck(ForStmt.getInitStmt() );
             else ExprCheck(ForStmt.getInitExpr());
             NodeCheck(ForStmt.getLoopStmt());
             ScopeStack.pop();
