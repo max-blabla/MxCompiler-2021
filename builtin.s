@@ -1,9 +1,9 @@
 	.text
 	.file	"builtin.c"
-	.globl	toString                # -- Begin function toString
+	.globl	_global.toString                # -- Begin function _global.toString
 	.p2align	2
-	.type	toString,@function
-toString:                               # @toString
+	.type	_global.toString,@function
+_global.toString:                               # @_global.toString
 	.cfi_startproc
 # %bb.0:
 	addi	sp, sp, -16
@@ -32,13 +32,13 @@ toString:                               # @toString
 	addi	sp, sp, 16
 	ret
 .Lfunc_end0:
-	.size	toString, .Lfunc_end0-toString
+	.size	_global.toString, .Lfunc_end0-_global.toString
 	.cfi_endproc
                                         # -- End function
-	.globl	print                   # -- Begin function print
+	.globl	_global.print                   # -- Begin function _global.print
 	.p2align	2
-	.type	print,@function
-print:                                  # @print
+	.type	_global.print,@function
+_global.print:                                  # @print
 	.cfi_startproc
 # %bb.0:
 	addi	sp, sp, -16
@@ -59,13 +59,13 @@ print:                                  # @print
 	addi	sp, sp, 16
 	ret
 .Lfunc_end1:
-	.size	print, .Lfunc_end1-print
+	.size	_global.print, .Lfunc_end1-_global.print
 	.cfi_endproc
                                         # -- End function
-	.globl	println                 # -- Begin function println
+	.globl	_global.println                 # -- Begin function _global.println
 	.p2align	2
-	.type	println,@function
-println:                                # @println
+	.type	_global.println,@function
+_global.println:                                # @_global.println
 	.cfi_startproc
 # %bb.0:
 	addi	sp, sp, -16
@@ -86,13 +86,13 @@ println:                                # @println
 	addi	sp, sp, 16
 	ret
 .Lfunc_end2:
-	.size	println, .Lfunc_end2-println
+	.size	_global.println, .Lfunc_end2-_global.println
 	.cfi_endproc
                                         # -- End function
-	.globl	printInt                # -- Begin function printInt
+	.globl	_global.printInt                # -- Begin function _global.printInt
 	.p2align	2
-	.type	printInt,@function
-printInt:                               # @printInt
+	.type	_global.printInt,@function
+_global.printInt:                               # @_global.printInt
 	.cfi_startproc
 # %bb.0:
 	addi	sp, sp, -16
@@ -113,13 +113,13 @@ printInt:                               # @printInt
 	addi	sp, sp, 16
 	ret
 .Lfunc_end3:
-	.size	printInt, .Lfunc_end3-printInt
+	.size	_global.printInt, .Lfunc_end3-_global.printInt
 	.cfi_endproc
                                         # -- End function
-	.globl	printlnInt              # -- Begin function printlnInt
+	.globl	_global.printlnInt              # -- Begin function _global.printlnInt
 	.p2align	2
-	.type	printlnInt,@function
-printlnInt:                             # @printlnInt
+	.type	_global.printlnInt,@function
+_global.printlnInt:                             # @_global.printlnInt
 	.cfi_startproc
 # %bb.0:
 	addi	sp, sp, -16
@@ -140,13 +140,13 @@ printlnInt:                             # @printlnInt
 	addi	sp, sp, 16
 	ret
 .Lfunc_end4:
-	.size	printlnInt, .Lfunc_end4-printlnInt
+	.size	_global.printlnInt, .Lfunc_end4-_global.printlnInt
 	.cfi_endproc
                                         # -- End function
-	.globl	getString               # -- Begin function getString
+	.globl	_global.getString               # -- Begin function _global.getString
 	.p2align	2
-	.type	getString,@function
-getString:                              # @getString
+	.type	_global.getString,@function
+_global.getString:                              # @_global.getString
 	.cfi_startproc
 # %bb.0:
 	addi	sp, sp, -16
@@ -173,13 +173,13 @@ getString:                              # @getString
 	addi	sp, sp, 16
 	ret
 .Lfunc_end5:
-	.size	getString, .Lfunc_end5-getString
+	.size	_global.getString, .Lfunc_end5-_global.getString
 	.cfi_endproc
                                         # -- End function
-	.globl	getInt                  # -- Begin function getInt
+	.globl	_global.getInt                  # -- Begin function _global.getInt
 	.p2align	2
-	.type	getInt,@function
-getInt:                                 # @getInt
+	.type	_global.getInt,@function
+_global.getInt:                                 # @_global.getInt
 	.cfi_startproc
 # %bb.0:
 	addi	sp, sp, -16
@@ -205,7 +205,7 @@ getInt:                                 # @getInt
 	addi	sp, sp, 16
 	ret
 .Lfunc_end6:
-	.size	getInt, .Lfunc_end6-getInt
+	.size	_global.getInt, .Lfunc_end6-_global.getInt
 	.cfi_endproc
                                         # -- End function
 	.globl	_string.parseInt                # -- Begin function parseInt
