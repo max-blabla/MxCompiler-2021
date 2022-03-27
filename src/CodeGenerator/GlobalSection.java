@@ -16,7 +16,7 @@ public class GlobalSection {
         Stream.println("\n\t.data");
         Stream.println(Name +":");
         if(!Objects.equals(Asciz, ""))
-            Stream.println("\t"+".asciz"+"\t" +"\""+ Asciz+"\"");
+            Stream.println("\t"+".asciz"+"\t" + Asciz);
         else {
                 Stream.println("\t" + ".word" + "\t" + 0);
         }

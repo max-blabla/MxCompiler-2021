@@ -6,11 +6,11 @@ import java.util.List;
 import java.util.Objects;
 
 public class BranchInstr extends BaseInstr{
-    String Op;
+    InstrSeg Op;
     public String Label1;
     public String Label2;
     public String Condition;
-    BranchInstr(String op, String label1,String label2, String condition){
+    BranchInstr(InstrSeg op, String label1,String label2, String condition){
         super(InstrType.Branch);
         Op = op;
         Label1 = label1;

@@ -14,6 +14,8 @@ import java.util.HashMap;
 
 public class IRBlock{
     String Label;
+    Integer Serial;
+    String Note ;
     List<BaseInstr> VarInstrList = new ArrayList<>();
     BaseInstr EndInstr;
     //变量名到
@@ -23,28 +25,19 @@ public class IRBlock{
     IRBlock Father;
     List<IRBlock>  SubBlocks;
     HashMap<String,String> PtrTable;
-    IRBlock(BlockType Type,String label, Integer BlockNum){
+    IRBlock(BlockType Type,String note, Integer serial){
         SubBlocks = new ArrayList<>();
         VarList = new HashMap<>();
         Father = null;
         blockType = Type;
         IsShut = false;
-        Label = label + BlockNum;
         PtrTable = new HashMap<>();
-      //  EndInstr = endInstr;
-    }
-    String getPtr(String Name){
-        return PtrTable.get(Name);
-    }
-
-    void putPtr(String Name,String Ptr){
-        PtrTable.put(Name,Ptr);
+        Serial = serial;
+        Note = note;
+        Label = Note+Serial;
     }
     public void ShutBlock(){
         IsShut = true;
-    }
-    public IRValue FindVar(String ValueName){
-        return VarList.getOrDefault(ValueName, null);
     }
     public boolean isShut(){
         return IsShut;
@@ -53,6 +46,9 @@ public class IRBlock{
     public void InsertSubBlock(IRBlock Sub){
         Sub.Father = this;
         SubBlocks.add(Sub);
+    }
+    public void PushInstr(BaseInstr Inst){
+        VarInstrList.add(0,Inst);
     }
     public void InsertInstr(BaseInstr Inst){
         VarInstrList.add(Inst);
@@ -72,7 +68,6 @@ public class IRBlock{
         }
         Writer.write("\t");
         EndInstr.Output(Writer);
-        for (IRBlock Block : SubBlocks) if(Block != null) Block.Output(Writer);
     }
 
     public List<BaseInstr> getVarInstrList() {

@@ -8,14 +8,14 @@ import java.util.List;
 import java.util.Objects;
 
 public class FuncCallInstr extends BaseInstr{
-    String Op;
+    InstrSeg Op;
     public String Rd;
-    String Type;
+    public String Type;
     public String FuncName;
     public List<String> ParamType;
     public List<String> Param;
     public List<Boolean> IsGlobal;
-    FuncCallInstr(String op, String rd, String type, String funcName, List<String> paramTypes,List<String> params){
+    FuncCallInstr(InstrSeg op, String rd, String type, String funcName, List<String> paramTypes,List<String> params,List<Boolean> isGlobal){
         super(InstrType.FuncCall);
         Op = op;
         Rd = rd;
@@ -23,9 +23,7 @@ public class FuncCallInstr extends BaseInstr{
         Param = params;
         FuncName = funcName;
         ParamType = paramTypes;
-        IsGlobal = new ArrayList<>();
-        for(String paramName :params)
-            IsGlobal.add(!paramName.contains("."));
+        IsGlobal  = isGlobal;
     }
 
     //@Override

@@ -8,20 +8,40 @@ import java.util.Map.Entry;
 
 public class IRModule{
     String Name;
-    HashMap<String, IRValue> VarTable;
-    HashMap<String,String> PtrTable;
+    List<String> PtrType;
+    HashMap<String, Integer> ClassPtrIndex;
     List<IRFunc> FuncSet;
-    Boolean IsUsed;
+    IRFunc Init;
     Integer Size;
-    public IRModule(){
-        VarTable = new HashMap<>();
-        PtrTable = new HashMap<>();
+
+    public IRFunc getInit() {
+        return Init;
+    }
+
+    public HashMap<String, Integer> getClassPtrIndex() {
+        return ClassPtrIndex;
+    }
+
+    public IRModule(String name){
+        PtrType = new ArrayList<>();
+        ClassPtrIndex = new HashMap<>();
         FuncSet = new ArrayList<>();
-        Size = 0 ;
+        Name = name;
+        Size = 0;
     }
-    public void VarInsert(IRValue varPair){
-        VarTable.put(varPair.Name, varPair);
+    public String FindPtrType(String Label){
+        if(ClassPtrIndex.containsKey(Label)) return PtrType.get(ClassPtrIndex.get(Label));
+        else return null;
     }
+    public Integer FindOffset(String Name){
+        return ClassPtrIndex.get(Name) *32;
+    }
+    public void InsertPtr(String Type,String Label){
+        ClassPtrIndex.put(Label,PtrType.size());
+        PtrType.add(Type);
+        Size += 32;
+    }
+
     public void FuncInsert(IRFunc irFunc){
         FuncSet.add(irFunc);
     }
@@ -30,40 +50,34 @@ public class IRModule{
     }
     public String getName(){return Name;}
     public List<IRFunc> getFuncSet(){return FuncSet;}
-    public HashMap<String,IRValue> getVarTable(){return VarTable;}
     public IRFunc FindFunc(String FuncName){
-        for(IRFunc Func:FuncSet) if(Objects.equals(Func.FuncName, FuncName)) return Func;
+        for(IRFunc Func:FuncSet) if(Objects.equals(Func.FuncName,Name +"."+ FuncName)) return Func;
         return null;
     }
-    public IRValue FindValue(String Name){
+/*    public IRValue FindValue(String Name){
         return VarTable.getOrDefault(Name, null);
-    }
-    public String GetPtr(String Name){
-        return PtrTable.getOrDefault(Name, null);
-    }
-    public void SetPtr(String Name,String Ptr){
-        PtrTable.put(Name,Ptr);
-    }
+    }*/
     public void Output(FileWriter Writer) throws IOException {
         if(Objects.equals(this.Name, "_global")){
-            for(Entry<String,IRValue> entry: VarTable.entrySet()) {
+            for(Entry<String,Integer> entry: ClassPtrIndex.entrySet()) {
                 Writer.write("@" + entry.getKey() + " = global ");
-                if(Objects.equals(entry.getValue().Asciz, "")) Writer.write("zeroinitializer\n");
-                else Writer.write("["+entry.getValue().Asciz.length()+",\""+entry.getValue().Asciz+"\"]\n");
+                Writer.write("zeroinitializer\n");
             }
+            Init.Output(Writer);
             for(IRFunc func : FuncSet) func.Output(Writer);
         }
         else{
             if(!Objects.equals(this.Name, "_string")) {
                 Writer.write("%" + "struct." + this.Name + " = type { ");
                 boolean IsStart = false;
-                for (Entry<String, IRValue> entry : VarTable.entrySet()) {
+                for (String Type: PtrType) {
                     if (!IsStart) IsStart = true;
                     else Writer.write(", ");
-                    Writer.write(entry.getValue().Type);
+                    Writer.write(Type);
                 }
                 Writer.write(" }\n");
             }
+            if(Init != null) Init.Output(Writer);
             for(IRFunc func : FuncSet) func.Output(Writer);
         }
     }

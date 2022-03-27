@@ -2,31 +2,26 @@ package IRBuilder;
 
 import java.io.FileWriter;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.List;
 
 public class IRFunc{
     String FuncName;
     String RetType;
     IRBlock Start;
     IRBlock End;
-    List<BaseInstr> InlineInstr;
-    Boolean IsUsed;
     Boolean IsLinked;
-    Boolean IsInline;
     Integer RegCnt;
     String ModuleName;
-    HashMap<String,IRValue> Params;
-    List<IRValue> ParamList;
-    public IRFunc(){
-        Params = new HashMap<>();
+    List<Param> ParamList;
+    Queue<IRBlock> OutQueue;
+    public IRFunc(String funcName,String moduleName,String retType){
+        FuncName = moduleName+"."+funcName;
+        ModuleName = moduleName;
         ParamList = new ArrayList<>();
-        IsUsed = false;
         RegCnt = 0;
         IsLinked = false;
-        IsInline = false;
+        RetType = retType;
     }
    // public String getIrRetType(){return "i32";}
     public String getFuncName() {
@@ -40,22 +35,25 @@ public class IRFunc{
         ++RegCnt;
         return Ret;
     }
-    public void PutParam(String Key,IRValue Value){
-        Params.put(Key,Value);
-        ParamList.add(Value);
+    public void SetParam(List<Param> Params){
+        ParamList.addAll(Params);
+    }
+    void SetFuncName (String Name){
+        FuncName = Name;
+    }
+    void AddInstr(BaseInstr Instr){
+        End.InsertInstr(Instr);
     }
 
     public void Output(FileWriter Writer) throws IOException {
-        if(!IsUsed) return;
-        if(IsInline) return;
         if(IsLinked) Writer.write(("\nlink " + this.RetType + " @" + this.FuncName));
         else Writer.write(("\ndefine " + this.RetType + " @" + this.FuncName));
         Writer.write("(");
         boolean IsStart = false;
-        for(IRValue Param : ParamList){
+        for(Param param : ParamList){
             if(!IsStart) IsStart = true;
             else  Writer.write(", ");
-             Writer.write(Param.Type+ " %"+ Param.Name);
+             Writer.write(param.Type+ " %"+ param.Name);
         }
         Writer.write(")");
         if(IsLinked) {
@@ -63,7 +61,14 @@ public class IRFunc{
             return;
         }
         Writer.write("{\n");
-        Start.Output(Writer);
+        OutQueue = new ArrayDeque<>();
+        OutQueue.add(Start);
+        while(!OutQueue.isEmpty()){
+            IRBlock Top = OutQueue.peek();
+            Top.Output(Writer);
+            for(IRBlock Sub : Top.SubBlocks) if(Sub != null) OutQueue.add(Sub);
+            OutQueue.remove();
+        }
         if(End != null) End.Output(Writer);
         Writer.write("}\n");
     }
@@ -76,23 +81,13 @@ public class IRFunc{
         return End;
     }
 
-    public List<IRValue> getParamList() {
+    public List<Param> getParamList() {
         return ParamList;
     }
 
     public Boolean getLinked() {
         return IsLinked;
     }
-    public List<BaseInstr> InlineReplace(List<String> Param,List<String> ParamTypes,String Rd){
-        FuncCallInstr ImcompLink = (FuncCallInstr) InlineInstr.get(InlineInstr.size()-1);
-        ImcompLink.ParamType.addAll(ParamTypes);
-        ImcompLink.Param.addAll(Param);
-        FuncCallInstr NewLink = new FuncCallInstr(ImcompLink.Op,Rd,ImcompLink.Type, ImcompLink.FuncName, ImcompLink.ParamType,ImcompLink.Param);
-        InlineInstr.set(InlineInstr.size()-1,NewLink);
-        return InlineInstr;
-    }
 
-    public Boolean getInline() {
-        return IsInline;
-    }
+
 }

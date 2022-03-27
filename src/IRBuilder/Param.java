@@ -1,19 +1,16 @@
 package IRBuilder;
 
-import ASTNode.ExprAST;
-
-public class IRValue{
+public class Param {
+    String Label;
     String Type;
     String Name;
-    IRValue(String type,String name){
+    Param(String type,String name,String label){
         Type = type;
         Name = name;
+        Label = label;
     }
-    public boolean isArray(){
-        return false;
-    }
+
     public String getName() {
         return Name;
     }
-
 }

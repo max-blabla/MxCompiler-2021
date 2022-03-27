@@ -4,12 +4,14 @@ import java.io.FileWriter;
 import java.io.IOException;
 
 public class AllocaInstr extends BaseInstr{
+    InstrSeg Seg;
     public String Rd;
     public String Type;
-    public AllocaInstr(String rd, String type){
+    public AllocaInstr(InstrSeg seg,String rd, String type){
         super(InstrType.Alloca);
         Rd = rd;
         Type = type;
+        Seg = seg;
     }
 
     //@Override

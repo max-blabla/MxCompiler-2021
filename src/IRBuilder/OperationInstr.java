@@ -4,9 +4,11 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.Objects;
 
+import static IRBuilder.InstrSeg.nullseg;
+
 public class OperationInstr extends BaseInstr{
-    public String Mode;
-    public String Op;
+    public InstrSeg Mode;
+    public InstrSeg Op;
     public String Rs1;
     public String Rs2;
     public String Rd;
@@ -14,7 +16,7 @@ public class OperationInstr extends BaseInstr{
     String Type2;
     public Boolean IsRsImm1;
     public Boolean IsRsImm2;
-    OperationInstr(String op, String rs1, String rs2, String type1 , String type2, String rd, String mode){
+    OperationInstr(InstrSeg op, String rd,  String rs1, String rs2, String type1 , String type2,InstrSeg mode){
         super(InstrType.Operation);
         Op = op;
         Rs1 = rs1;
@@ -30,7 +32,7 @@ public class OperationInstr extends BaseInstr{
     @Override
     public void Output(FileWriter Writer) throws IOException {
         Writer.write("%"+Rd + " = "+ Op );
-        if(!Objects.equals(Mode, ""))  Writer.write( " " + Mode );
+        if(!Objects.equals(Mode, nullseg))  Writer.write( " " + Mode );
         Writer.write(", " + Type1 +" ");
         if(!IsRsImm1) Writer.write("%");
         Writer.write(Rs1 + ", " + Type2 + " ");

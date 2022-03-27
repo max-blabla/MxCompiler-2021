@@ -4,14 +4,14 @@ import java.io.FileWriter;
 import java.io.IOException;
 
 public class StoreInstr extends BaseInstr{
-    String Op;
+    InstrSeg Op;
     public String Rs;
     public String RsType;
     public String Ptr;
-    String PtrType;
+    public String PtrType;
     public Boolean IsPtrGlobal;
     public Boolean IsRsGlobal;
-    public StoreInstr(String op,String rs, String rsType, String ptr, String ptrType,Boolean isPtrGlobal,Boolean isRsGlobal){
+    public StoreInstr(InstrSeg op,String rs, String rsType, String ptr, String ptrType,Boolean isPtrGlobal,Boolean isRsGlobal){
         super(InstrType.Store);
         Op = op;
         Rs = rs;
@@ -24,7 +24,7 @@ public class StoreInstr extends BaseInstr{
 
    // @Override
     public void Output(FileWriter Writer) throws IOException {
-        Writer.write(Op+ ' ' + RsType + ' ' );
+        Writer.write(Op.toString()+ ' ' + RsType + ' ' );
         if(!IsRsGlobal)  Writer.write("%"+Rs );
         else Writer.write("@"+Rs);
         Writer.write( ", " + PtrType+ " ");

@@ -4,13 +4,13 @@ import java.io.FileWriter;
 import java.io.IOException;
 
 public class LoadInstr extends BaseInstr{
-    String Op;
+    InstrSeg Op;
     public String Rd;
     public String RdType;
     public String RsPtr;
-    String RsPrtType;
+    public String RsPrtType;
     public Boolean IsPtrGlobal;
-    LoadInstr(String op, String rd, String rdType, String rsPtr, String rsPrtType, Boolean isPtrGlobal){
+    LoadInstr(InstrSeg op, String rd, String rdType, String rsPtr, String rsPrtType, Boolean isPtrGlobal){
         super(InstrType.Load);
         Op = op;
         Rd = rd;

@@ -4,5 +4,7 @@ public enum BlockType{
     TrueStmt,
     FalseStmt,
     Basic,
-    Body
+    Body,
+    Start,
+    End
 }

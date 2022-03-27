@@ -9,6 +9,10 @@ import java.io.PrintStream;
 import java.util.*;
 import java.util.List;
 import java.util.Map.Entry;
+
+import static IRBuilder.InstrSeg.index;
+import static IRBuilder.InstrSeg.offset;
+
 class Triple{
     RegType Rd;
     RegType Rs1;
@@ -30,6 +34,8 @@ public class CodeGenerator {
     HashMap<String,GlobalSection> GlobalVariables;
     HashMap<String,List<String>> AllFuncParams;
     List<FunctionSection> FunctionsCode;
+    HashMap<String,String> ConstStr;
+    HashMap<String,BlockSection> BlockMap;
     List<RegType> TrueReg;
     List<String> TrueRegName;
     IRModule Global;
@@ -46,6 +52,7 @@ public class CodeGenerator {
     Integer StackTop;
     Integer StackBottom;
     Integer BlockCnt = 0;
+    Integer FuncParamNum = 0;
     Integer FuncCnt = 8;
 
     //人工对照表：
@@ -62,8 +69,9 @@ public class CodeGenerator {
     // s2-11 18-27
     // t3-6 28-31
 
-    public void setModuleList(List<IRModule> moduleList) {
+    public void setIRInit(List<IRModule> moduleList,HashMap<String,String> constStr ) {
         ModuleList = moduleList;
+        ConstStr = constStr;
     }
 
     public void CodeOutput(PrintStream Stream){
@@ -76,12 +84,13 @@ public class CodeGenerator {
     public void CodeGenerate(){
         GlobalInit();
         for(IRModule module:ModuleList){
+            FuncGen(module.getInit());
             for(IRFunc func : module.getFuncSet()) FuncGen(func);
         }
     }
     List<String> GetVirFuncParam(IRFunc func){
         List<String> FuncParam = new ArrayList<>();
-        for(IRValue value : func.getParamList()) FuncParam.add(value.getName());
+        for(Param value : func.getParamList()) FuncParam.add(value.getName());
         return FuncParam;
     }
     String StackPos(Integer VirIndex){
@@ -94,14 +103,15 @@ public class CodeGenerator {
         }
     }
     void TranSection(BlockSection Start, BlockSection End){
-        if(StackBottom < -2048){
-            UCode Li = new UCode(OpType.li,VirNull,RegType.t0, Integer.toString(StackBottom),0);
+        Integer TrueBottom = StackBottom - FuncParamNum * 4;
+        if(TrueBottom < -2048){
+            UCode Li = new UCode(OpType.li,VirNull,RegType.t0, Integer.toString(TrueBottom),0);
             RCode SpDown = new RCode(OpType.add,VirNull,VirNull,VirNull,RegType.sp,RegType.sp,RegType.t0,0);
             Start.CodeList.add(Li);
             Start.CodeList.add(SpDown);
         }
         else{
-            ICode SpDown  = new ICode(OpType.addi, VirNull, VirNull,Integer.toString(StackBottom), 0);
+            ICode SpDown  = new ICode(OpType.addi, VirNull, VirNull,Integer.toString(TrueBottom), 0);
             SpDown.Rd = RegType.sp;
             SpDown.Rs = RegType.sp;
             Start.CodeList.add(SpDown);
@@ -119,21 +129,23 @@ public class CodeGenerator {
         End.CodeList.add(S0Out);
         End.CodeList.add(RaOut);
         if(StackBottom < -2048){
-            UCode Li = new UCode(OpType.li,VirNull,RegType.t0,Integer.toString(-StackBottom),0);
+            UCode Li = new UCode(OpType.li,VirNull,RegType.t0,Integer.toString(-TrueBottom),0);
             RCode SpUp = new RCode(OpType.add,VirNull,VirNull,VirNull,RegType.sp,RegType.sp,RegType.t0,0);
-            Start.CodeList.add(Li);
-            Start.CodeList.add(SpUp);
+            End.CodeList.add(Li);
+            End.CodeList.add(SpUp);
         }
         else{
-            ICode SpUp  = new  ICode(OpType.addi, VirNull, VirNull,Integer.toString(-StackBottom), 0);
+            ICode SpUp  = new  ICode(OpType.addi, VirNull, VirNull,Integer.toString(-TrueBottom), 0);
             SpUp.Rd = RegType.sp;
             SpUp.Rs = RegType.sp;
             End.CodeList.add(SpUp);
         }
+
     }
     void GlobalInit(){
         //设定函数参数 全局变量 以及 找到全局
         GlobalVariables = new HashMap<>();
+        BlockMap = new HashMap<>();
         AllFuncParams = new HashMap<>();
         FunctionsCode = new ArrayList<>();
         TrueReg = new ArrayList<>(Arrays.asList(
@@ -153,27 +165,30 @@ public class CodeGenerator {
                 break;
             }
         }
-        for(Entry<String,IRValue> entry : Global.getVarTable().entrySet()){
-            Integer Size;
-            if(Objects.equals(entry.getValue().getAsciz(), "")){
-                if(Objects.equals(entry.getValue().getType(), "_string*")) Size = IRTypeToSize(entry.getValue().getType());
-                else Size = 8;
-            }
-            else Size =  entry.getValue().getAsciz().length();
-            GlobalSection NewSec = new GlobalSection(entry.getKey(),entry.getValue().getAsciz(),Size);
+        for(Entry<String,Integer> entry : Global.getClassPtrIndex().entrySet()){
+            Integer Size = 4;
+            GlobalSection NewSec = new GlobalSection(entry.getKey(),"",Size);
+            GlobalVariables.put(entry.getKey(),NewSec);
+        }
+        for(Entry<String,String> entry:ConstStr.entrySet()){
+            Integer Size = 4;
+            GlobalSection NewSec = new GlobalSection(entry.getKey(),entry.getValue(),Size);
             GlobalVariables.put(entry.getKey(),NewSec);
         }
         for(IRModule module:ModuleList){
+            if(module.getInit() != null) AllFuncParams.put(module.getInit().getFuncName(),GetVirFuncParam(module.getInit()));
             for(IRFunc func : module.getFuncSet()){
                 StackBottom = 0;
                 List<String>  FuncParam = GetVirFuncParam(func);
                 AllFuncParams.put(func.getFuncName(),FuncParam);
             }
         }
+
     }
     void FuncInit(IRFunc irFunc){
         String NullImm = "NullImm";
         StackTop = 0;
+        FuncParamNum = 0;
         StackBottom = 0;
         ++FuncCnt;
         BlockCnt = 0;
@@ -196,10 +211,14 @@ public class CodeGenerator {
         VirStack = new HashMap<>();
     }
     void FuncGen(IRFunc irFunc){
-        if(irFunc.getInline()) return;
+     //   if(irFunc.getInline()) return;
+        if(irFunc == null) return ;
         if(irFunc.getLinked()) return;
         FuncInit(irFunc);
-        FunctionSection NewFunc = new FunctionSection(irFunc.getFuncName());
+        FunctionSection NewFunc;
+        if(Objects.equals(irFunc.getFuncName(), "_global.main")) NewFunc  = new FunctionSection("main");
+        else NewFunc = new FunctionSection(irFunc.getFuncName());
+        BlockMap = new HashMap<>();
         BlockSection Start = new BlockSection("","");
         StackBottom -= 16;
         BlockGen(irFunc.getStart(),NewFunc);
@@ -209,7 +228,7 @@ public class CodeGenerator {
         NewFunc.BlocksCode.add(0,Start);
         BlockSection End = NewFunc.BlocksCode.get(NewFunc.BlocksCode.size()-1);
         TranSection(Start,End);
-        NewFunc.BlocksCode = ImmFlush(NewFunc,StackTop-StackBottom);
+        NewFunc.BlocksCode = ImmFlush(NewFunc,StackTop-StackBottom+4*FuncParamNum);
         MCode Ret = new MCode("ret",0);
         NewFunc.BlocksCode.get(NewFunc.BlocksCode.size()-1).CodeList.add(Ret);
         FunctionsCode.add(NewFunc);
@@ -222,38 +241,33 @@ public class CodeGenerator {
                 if(Code instanceof  RCode){
                     RCode OpCode = (RCode) Code;
                     RCode SubCode = new RCode(OpType.sub,VirT0,OpCode.VirRs1,OpCode.VirRs2,RegType.NULL,RegType.NULL,RegType.NULL,OpCode.Line);
-                    switch (OpCode.Op){
-                        case seq:{
-                            PCode AndCode = new PCode(OpType.seqz,OpCode.VirRd,VirT0,OpCode.Line);
+                    switch (OpCode.Op) {
+                        case seq -> {
+                            PCode AndCode = new PCode(OpType.seqz, OpCode.VirRd, VirT0, OpCode.Line);
                             NewBlock.CodeList.add(SubCode);
                             NewBlock.CodeList.add(AndCode);
-                            break;
                         }
-                        case sne:{
+                        case sne -> {
                             SubCode.VirRd = OpCode.VirRd;
                             NewBlock.CodeList.add(SubCode);
-                            break;
                         }
-                        case sge:{
-                            RCode SltCode = new RCode(OpType.slt,VirT0,OpCode.VirRs1,OpCode.VirRs2,RegType.NULL,RegType.NULL,RegType.NULL,OpCode.Line);
-                            ICode XorCode = new ICode(OpType.xori,OpCode.VirRd,VirT0,"1",OpCode.Line);
+                        case sge -> {
+                            RCode SltCode = new RCode(OpType.slt, VirT0, OpCode.VirRs1, OpCode.VirRs2, RegType.NULL, RegType.NULL, RegType.NULL, OpCode.Line);
+                            ICode XorCode = new ICode(OpType.xori, OpCode.VirRd, VirT0, "1", OpCode.Line);
                             NewBlock.CodeList.add(SltCode);
                             NewBlock.CodeList.add(XorCode);
-                            break;
                         }
-                        case sle:{
-                            RCode SltCode = new RCode(OpType.slt,VirT0,OpCode.VirRs2,OpCode.VirRs1,RegType.NULL,RegType.NULL,RegType.NULL,OpCode.Line);
-                            ICode XorCode = new ICode(OpType.xori,OpCode.VirRd,VirT0,"1",OpCode.Line);
+                        case sle -> {
+                            RCode SltCode = new RCode(OpType.slt, VirT0, OpCode.VirRs2, OpCode.VirRs1, RegType.NULL, RegType.NULL, RegType.NULL, OpCode.Line);
+                            ICode XorCode = new ICode(OpType.xori, OpCode.VirRd, VirT0, "1", OpCode.Line);
                             NewBlock.CodeList.add(SltCode);
                             NewBlock.CodeList.add(XorCode);
-                            break;
                         }
-                        case sgt:{
-                            RCode SltCode = new RCode(OpType.slt,OpCode.VirRd,OpCode.VirRs2,OpCode.VirRs1,RegType.NULL,RegType.NULL,RegType.NULL,OpCode.Line);
+                        case sgt -> {
+                            RCode SltCode = new RCode(OpType.slt, OpCode.VirRd, OpCode.VirRs2, OpCode.VirRs1, RegType.NULL, RegType.NULL, RegType.NULL, OpCode.Line);
                             NewBlock.CodeList.add(SltCode);
-                            break;
                         }
-                        default: NewBlock.CodeList.add(Code);
+                        default -> NewBlock.CodeList.add(Code);
                     }
                 }
                 else NewBlock.CodeList.add(Code);
@@ -273,10 +287,10 @@ public class CodeGenerator {
                 if(Code instanceof ICode){
                     ICode ImmCode = (ICode) Code;
                     if(ImmCode.Rs == RegType.sp && ImmCode.Rd != RegType.sp){
-                        Integer Offset = Integer.parseInt(ImmCode.Imm)+StackSize;
+                        int Offset = Integer.parseInt(ImmCode.Imm)+StackSize;
                         if(Offset > 2047){
-                            UCode NewLi = new UCode(OpType.li,VirNull,RegType.t0, Integer.toString(Offset),ImmCode.Line);
-                            RCode NewAdd = new RCode(OpType.add,VirNull,VirNull,VirNull,ImmCode.Rd,RegType.t0,RegType.sp,ImmCode.Line);
+                            UCode NewLi = new UCode(OpType.li,VirNull,RegType.t3, Integer.toString(Offset),ImmCode.Line);
+                            RCode NewAdd = new RCode(OpType.add,VirNull,VirNull,VirNull,ImmCode.Rd,RegType.t3,RegType.sp,ImmCode.Line);
                             NewBlock.CodeList.add(NewLi);
                             NewBlock.CodeList.add(NewAdd);
                         }
@@ -291,16 +305,17 @@ public class CodeGenerator {
                 else if(Code instanceof SCode){
                     SCode StCode = (SCode) Code;
                     if(StCode.Rs2 == RegType.sp){
-                        int Offset = Integer.parseInt(StCode.Imm)+StackSize;
-                        if(Offset > 2047){
-                            UCode NewLi = new UCode(OpType.li,VirNull,RegType.t0, Integer.toString(Offset),StCode.Line);
-                            RCode NewAdd = new RCode(OpType.add,VirNull,VirNull,VirNull,RegType.t0,RegType.t0,RegType.sp,StCode.Line);
-                            NewBlock.CodeList.add(NewLi);
-                            NewBlock.CodeList.add(NewAdd);
-                            StCode.Rs2 = RegType.t0;
-                            StCode.Imm = "0";
+                        if(Integer.parseInt(StCode.Imm) < 0) {
+                            int Offset = Integer.parseInt(StCode.Imm) + StackSize;
+                            if (Offset > 2047) {
+                                UCode NewLi = new UCode(OpType.li, VirNull, RegType.t3, Integer.toString(Offset), StCode.Line);
+                                RCode NewAdd = new RCode(OpType.add, VirNull, VirNull, VirNull, RegType.t3, RegType.t3, RegType.sp, StCode.Line);
+                                NewBlock.CodeList.add(NewLi);
+                                NewBlock.CodeList.add(NewAdd);
+                                StCode.Rs2 = RegType.t3;
+                                StCode.Imm = "0";
+                            } else StCode.Imm = Integer.toString(Offset);
                         }
-                        else StCode.Imm = Integer.toString(Offset);
                     }
                     NewBlock.CodeList.add(StCode);
                 }
@@ -309,11 +324,11 @@ public class CodeGenerator {
                     if(LdCode.Rs == RegType.sp){
                         int Offset = Integer.parseInt(LdCode.Imm)+StackSize;
                         if(Offset > 2047){
-                            UCode NewLi = new UCode(OpType.li,VirNull,RegType.t0, Integer.toString(Offset),LdCode.Line);
-                            RCode NewAdd = new RCode(OpType.add,VirNull,VirNull,VirNull,RegType.t0,RegType.t0,RegType.sp,LdCode.Line);
+                            UCode NewLi = new UCode(OpType.li,VirNull,RegType.t3, Integer.toString(Offset),LdCode.Line);
+                            RCode NewAdd = new RCode(OpType.add,VirNull,VirNull,VirNull,RegType.t3,RegType.t3,RegType.sp,LdCode.Line);
                             NewBlock.CodeList.add(NewLi);
                             NewBlock.CodeList.add(NewAdd);
-                            LdCode.Rs = RegType.t0;
+                            LdCode.Rs = RegType.t3;
                             LdCode.Imm = "0";
                         }
                         else LdCode.Imm = Integer.toString(Offset);
@@ -332,10 +347,11 @@ public class CodeGenerator {
         else if(Rs1 != 0) {
             if (Rs1 - BuiltinReg < CurFuncParam.size()) {
                 int ParamIndex = Rs1 - BuiltinReg;
-                if (ParamIndex <= 8) NewTriple.Rs1 = TrueReg.get(11 + ParamIndex);
+                if (ParamIndex < 8) NewTriple.Rs1 = TrueReg.get(11 + ParamIndex);
                 else {
+                    NewTriple.Rs1 = RegType.t0;
                     LCode Load = new LCode(OpType.lw, VirNull, VirNull, RegType.t0, RegType.sp,
-                            Integer.toString(4 * (CurFuncParam.size() - ParamIndex)), Self.Line);
+                            Integer.toString(4 * (CurFuncParam.size() - ParamIndex-1)), Self.Line);
                     Block.CodeList.add(Load);
                 }
             } else {
@@ -355,10 +371,10 @@ public class CodeGenerator {
         if(Rd > 0 && Rd < BuiltinReg ) NewTriple.Rd = TrueReg.get(Rd);
         else if(Rd < 0) {
             int ParamIndex = Integer.parseInt(InvVirName.get(Rd).substring(6));
-            if (ParamIndex < 8) NewTriple.Rd = TrueReg.get(10 + ParamIndex);
+            if (ParamIndex <= 8) NewTriple.Rd = TrueReg.get(10 + ParamIndex);
             else {
                 SCode Store = new SCode(OpType.sw, VirNull, VirNull, RegType.t0, RegType.sp,
-                        StackPos(Rd), Self.Line);
+                        Integer.toString(4 * (ParamIndex - 9)), Self.Line);
                 NewTriple.Rd = RegType.t0;
                 Block.CodeList.add(Store);
             }
@@ -448,6 +464,7 @@ public class CodeGenerator {
         String ClangName = ".LBB"+FuncCnt + "_" +BlockCnt;
         LabelToClang.put(irBlock.getLabel(),ClangName);
         BlockSection NewBlockCode = new BlockSection(ClangName,irBlock.getLabel());
+        BlockMap.put(irBlock.getLabel(),NewBlockCode);
         List<BaseInstr> InstrList = irBlock.getVarInstrList();
         InstrList.add(irBlock.getEndInstr());
         int InstrLine = 0;
@@ -489,78 +506,29 @@ public class CodeGenerator {
                 Integer VirRd = GetVirtualReg(NewIROp.Rd);
                 Integer VirRs1;
                 Integer VirRs2;
-                switch (NewIROp.Op){
-                    case "icmp":{
-                        switch (NewIROp.Mode){
-                            case "ne":{
-                                Op = OpType.sne;
-                                break;
-                            }
-                            case "uge":{
-                                Op = OpType.sge;
-                                break;
-                            }
-                            case "ule":{
-                                Op = OpType.sle;
-                                break;
-                            }
-                            case "ult":{
-                                Op = OpType.slt;
-                                break;
-                            }
-                            case "ugt":{
-                                Op = OpType.sgt;
-                                break;
-                            }
-                            case "eq":{
-                                Op = OpType.seq;
-                                break;
-                            }
-                            default:throw new RuntimeException();
+                switch (NewIROp.Op) {
+                    case icmp -> {
+                        switch (NewIROp.Mode) {
+                            case ne -> Op = OpType.sne;
+                            case uge -> Op = OpType.sge;
+                            case ule -> Op = OpType.sle;
+                            case ult -> Op = OpType.slt;
+                            case ugt -> Op = OpType.sgt;
+                            case eq -> Op = OpType.seq;
+                            default -> throw new RuntimeException();
                         }
-                        break;
                     }
-                    case "add":{
-                        Op = OpType.add;
-                        break;
-                    }
-                    case "sub":{
-                        Op = OpType.sub;
-                        break;
-                    }
-                    case "div":{
-                        Op = OpType.div;
-                        break;
-                    }
-                    case "mul":{
-                        Op = OpType.mul;
-                        break;
-                    }
-                    case "rem":{
-                        Op = OpType.rem;
-                        break;
-                    }
-                    case "xor":{
-                        Op = OpType.xor;
-                        break;
-                    }
-                    case "or":{
-                        Op = OpType.or;
-                        break;
-                    }
-                    case "and":{
-                        Op = OpType.and;
-                        break;
-                    }
-                    case "sll":{
-                        Op = OpType.sll;
-                        break;
-                    }
-                    case "sra":{
-                        Op = OpType.sra;
-                        break;
-                    }
-                    default:throw new RuntimeException();
+                    case add -> Op = OpType.add;
+                    case sub -> Op = OpType.sub;
+                    case div -> Op = OpType.div;
+                    case mul -> Op = OpType.mul;
+                    case rem -> Op = OpType.rem;
+                    case xor -> Op = OpType.xor;
+                    case or -> Op = OpType.or;
+                    case and -> Op = OpType.and;
+                    case sll -> Op = OpType.sll;
+                    case sra -> Op = OpType.sra;
+                    default -> throw new RuntimeException();
                 }
                 if(NewIROp.IsRsImm1){
                     int Imm1 = Integer.parseInt(NewIROp.Rs1);
@@ -629,7 +597,7 @@ public class CodeGenerator {
                 else VirPtr = GetVirtualReg(NewIRGet.Ptr);
                 Integer VirRd = GetVirtualReg(NewIRGet.Rd);
                 Integer VirIndex = GetVirtualReg(NewIRGet.Index);
-                if(Objects.equals(NewIRGet.Mode, "index")) {
+                if(Objects.equals(NewIRGet.Mode, InstrSeg.index)) {
                     ICode NewLi = new ICode(OpType.addi,VirT2,VirZero,RdSize.toString(),InstrLine);
                     RCode NewMuli = new RCode(OpType.mul, VirT1, VirIndex, VirT2,RegType.NULL,RegType.NULL,RegType.NULL, InstrLine);
                     ICode NewAddi = new ICode(OpType.addi, VirT2, VirT1, "4", InstrLine);
@@ -637,7 +605,7 @@ public class CodeGenerator {
                     NewBlockCode.CodeList.add(NewMuli);
                     NewBlockCode.CodeList.add(NewAddi);
                 }
-                else if(Objects.equals(NewIRGet.Mode, "offset")){
+                else if(Objects.equals(NewIRGet.Mode, InstrSeg.offset)){
                         ICode NewOffAddi = new ICode(OpType.addi, VirT2, VirZero, Integer.toString(NewIRGet.Offset/8), InstrLine);
                         NewBlockCode.CodeList.add(NewOffAddi);
                 }
@@ -661,6 +629,7 @@ public class CodeGenerator {
             else if(Instr instanceof FuncCallInstr){
                 FuncCallInstr NewIRCall = (FuncCallInstr)  Instr;
                 List<String> CallParams = NewIRCall.Param;
+                FuncParamNum = (CallParams.size() -8 ) > FuncParamNum? CallParams.size() -8 : FuncParamNum;
                 for(int i = 0 ; i < CallParams.size();i++) {
                     //TODO 函数寄存器分配
                     //TODO 根本不分配函数参数？我觉得可以有
@@ -685,6 +654,21 @@ public class CodeGenerator {
                 }
             }
             else if(Instr instanceof PhiInstr ){
+                PhiInstr NewPhi = (PhiInstr) Instr;
+                Integer VirRd = GetVirtualReg(NewPhi.Rd);
+                for(int i = 0 ; i < NewPhi.PreBlock.size();i++){
+                    BlockSection Block =BlockMap.get(NewPhi.PreBlock.get(i));
+                    if(NewPhi.IsImm.get(i)) {
+                        ICode NewAddi = new ICode(OpType.addi,VirRd,VirZero,NewPhi.PhiValue.get(i),-1);
+                        Block.PhiInsert(NewAddi);
+                    }
+                    else{
+                        Integer VirRs = GetVirtualReg(NewPhi.PhiValue.get(i));
+                        ICode NewAddi = new ICode(OpType.addi,VirRd,VirRs,"0",-1);
+                        Block.PhiInsert(NewAddi);
+                    }
+                }
+             //   NewBlockCode
             }
             else if(Instr instanceof ReturnInstr){
                 //和call一样，需要交流
