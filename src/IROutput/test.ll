@@ -1,132 +1,4 @@
 
-link i32* @malloc(i32 %size);
-
-link void @println(_string %out);
-
-link void @print(_string %out);
-
-link _string @toString(i32 %num);
-
-link void @printInt(i32 %out);
-
-link void @printlnInt(i32 %out);
-
-link _string @getString();
-
-link i32 @getInt();
-
-link _string @strcopy(_string %dst);
-
-link void @append(_string %dst, _string %src);
-
-link i32 @_string.length(_string %this);
-
-link _string @_string.substring(_string %this, i32 %l, i32 %r);
-
-link i32 @_string.parseInt(_string %this);
-
-link i32 @_string.ord(_string %this, i32 %index);
-
-link i32 @strcomp(_string %dst, _string %src);
-
-define i32 @_global.tak(i32 %_global.tak.0, i32 %_global.tak.1, i32 %_global.tak.2){
-Start2:
-	%_global.tak.3 = alloca i32
-	%_global.tak.4 = alloca i32
-	store i32 %_global.tak.0, i32* %_global.tak.4
-	%_global.tak.5 = alloca i32
-	store i32 %_global.tak.1, i32* %_global.tak.5
-	%_global.tak.6 = alloca i32
-	store i32 %_global.tak.2, i32* %_global.tak.6
-	br If-Condition8
-If-Condition8:
-	%_global.tak.7 = load i32, i32* %_global.tak.5
-	%_global.tak.9 = load i32, i32* %_global.tak.4
-	%_global.tak.11 = icmp ult, i32 %_global.tak.7, i32 %_global.tak.9
-	br i8 %_global.tak.11 If-True-Stmt9, If-False-Stmt10
-If-True-Stmt9:
-	%_global.tak.12 = add, i32 1, i32 0
-	%_global.tak.21 = load i32, i32* %_global.tak.4
-	%_global.tak.23 = add, i32 1, i32 0
-	%_global.tak.25 = sub, i32 %_global.tak.21, i32 %_global.tak.23
-	%_global.tak.26 = load i32, i32* %_global.tak.5
-	%_global.tak.28 = load i32, i32* %_global.tak.6
-	%_global.tak.20 = call i32 @_global.tak(i32 %_global.tak.25, i32 %_global.tak.26, i32 %_global.tak.28)
-	%_global.tak.34 = load i32, i32* %_global.tak.5
-	%_global.tak.36 = add, i32 1, i32 0
-	%_global.tak.38 = sub, i32 %_global.tak.34, i32 %_global.tak.36
-	%_global.tak.39 = load i32, i32* %_global.tak.6
-	%_global.tak.41 = load i32, i32* %_global.tak.4
-	%_global.tak.33 = call i32 @_global.tak(i32 %_global.tak.38, i32 %_global.tak.39, i32 %_global.tak.41)
-	%_global.tak.47 = load i32, i32* %_global.tak.6
-	%_global.tak.49 = add, i32 1, i32 0
-	%_global.tak.51 = sub, i32 %_global.tak.47, i32 %_global.tak.49
-	%_global.tak.52 = load i32, i32* %_global.tak.4
-	%_global.tak.54 = load i32, i32* %_global.tak.5
-	%_global.tak.46 = call i32 @_global.tak(i32 %_global.tak.51, i32 %_global.tak.52, i32 %_global.tak.54)
-	%_global.tak.16 = call i32 @_global.tak(i32 %_global.tak.20, i32 %_global.tak.33, i32 %_global.tak.46)
-	%_global.tak.56 = add, i32 %_global.tak.12, i32 %_global.tak.16
-	store i32 %_global.tak.56, i32* %_global.tak.3
-	br End3
-If-False-Stmt10:
-	%_global.tak.57 = load i32, i32* %_global.tak.6
-	store i32 %_global.tak.57, i32* %_global.tak.3
-	br End3
-Succeed11:
-	br End3
-End3:
-	%_global.tak.59 = load i32, i32* %_global.tak.3
-	ret i32 %_global.tak.59
-}
-
-define i32 @main(){
-Start6:
-	call void @_global._init()
-	%main.1 = alloca i32
-	%main.2 = alloca _A**
-	%main.4 = add, i32 10, i32 0
-	%main.6 = add, i32 9, i32 0
-	%main.8 = mul, i32 %main.4, i32 4
-	%main.10 = add, i32 %main.8, i32 4
-	%main.11 = link _A** @malloc(i32 %main.10)
-	store i32 %main.4, _A** %main.11
-	phi start i32 %main.12
-	%main.12 = add, i32 0, i32 0
-	br NewArrayCondition12
-NewArrayCondition12:
-	%main.13 = icmp ult, i32 %main.12, i32 %main.4
-	br i8 %main.13 NewArrayBody13, Succeed14
-NewArrayBody13:
-	%main.9 = getelement _A**, %main.11, i32 %main.12
-	%main.14 = mul, i32 %main.6, i32 4
-	%main.16 = add, i32 %main.14, i32 4
-	%main.17 = link _A* @malloc(i32 %main.16)
-	store i32 %main.6, _A* %main.17
-	store _A* %main.17, _A** %main.9
-	phi start i32 %main.18
-	%main.18 = add, i32 0, i32 0
-	%main.12 = add, i32 %main.12, i32 1
-	br NewArrayCondition15
-NewArrayCondition15:
-	%main.19 = icmp ult, i32 %main.18, i32 %main.6
-	br i8 %main.19 NewArrayBody16, Succeed17
-NewArrayBody16:
-	%main.18 = add, i32 %main.18, i32 1
-	br NewArrayCondition15
-Succeed17:
-	phi end i32 %main.18
-	br NewArrayCondition12
-Succeed14:
-	phi end i32 %main.12
-	store _A** %main.11, _A*** %main.2
-	%main.27 = add, i32 0, i32 0
-	store i32 %main.27, i32* %main.1
-	br End7
-End7:
-	%main.29 = load i32, i32* %main.1
-	ret i32 %main.29
-}
-
 define void @_global._init(){
 Start0:
 	br End1
@@ -134,20 +6,114 @@ End1:
 	ret void
 }
 
-link i32 @_string.length(_string %this);
+link void @_global.print(_string %str);
 
-link _string @_string.substring(_string %this, i32 %l, i32 %r);
+link void @_global.println(_string %str);
+
+link _string @_global.strcopy(_string %str);
+
+link _string @_global.toString(i32 %num);
+
+link void @_global.printInt(i32 %num);
+
+link void @_global.printlnInt(i32 %num);
+
+link _string @_global.getString();
+
+link i32 @_global.getInt();
+
+link _string @_global.append(_string %dst, _string %src);
+
+link void @_global.strcomp(_string %dst, _string %src);
+
+link i32 @_global.length(_string %this);
 
 link i32 @_string.parseInt(_string %this);
 
-link i32 @_string.ord(_string %this, i32 %index);
-%struct._A = type {  }
+link _string @_string.substring(_string %this, i32 %l, i32 %r);
 
-define void @_A._init(_A %_A._init.this){
-Start4:
-	%_A._init.0 = alloca _A
-	store _A %_A._init.this, _A* %_A._init.0
-	br End5
-End5:
-	ret void
+link i32 @_string.ord(_string %this, i32 %index);
+
+define i32 @_global.main(){
+Start3:
+	%_global.main.0 = alloca i32
+	call void @_global._init()
+	%_global.main.1 = alloca i32
+	%_global.main.2 = add, i32 10, i32 0
+	%_global.main.3 = load i32, i32* %_global.main.1
+	store i32 %_global.main.2, i32* %_global.main.1
+	%_global.main.4 = load i32, i32* %_global.main.1
+	%_global.main.5 = alloca i32
+	%_global.main.6 = add, i32 0, i32 0
+	%_global.main.7 = load i32, i32* %_global.main.5
+	store i32 %_global.main.6, i32* %_global.main.5
+	%_global.main.8 = load i32, i32* %_global.main.5
+	%_global.main.9 = alloca i32
+	%_global.main.10 = add, i32 1, i32 0
+	%_global.main.11 = load i32, i32* %_global.main.9
+	store i32 %_global.main.10, i32* %_global.main.9
+	%_global.main.12 = load i32, i32* %_global.main.9
+	br For-Condition4
+For-Condition4:
+	%_global.main.13 = load i32, i32* %_global.main.9
+	%_global.main.14 = load i32, i32* %_global.main.1
+	%_global.main.15 = icmp ule, i32 %_global.main.13, i32 %_global.main.14
+	br i8 %_global.main.15 For-Body5, Succeed7
+For-Body5:
+	%_global.main.16 = load i32, i32* %_global.main.5
+	%_global.main.17 = load i32, i32* %_global.main.9
+	%_global.main.18 = add, i32 %_global.main.16, i32 %_global.main.17
+	%_global.main.19 = load i32, i32* %_global.main.5
+	store i32 %_global.main.18, i32* %_global.main.5
+	%_global.main.20 = load i32, i32* %_global.main.5
+	br For-Incr6
+For-Incr6:
+	%_global.main.21 = load i32, i32* %_global.main.9
+	%_global.main.22 = load i32, i32* %_global.main.9
+	%_global.main.23 = add, i32 %_global.main.22, i32 1
+	store i32 %_global.main.23, i32* %_global.main.9
+	br For-Condition4
+Succeed7:
+	%_global.main.24 = alloca i32
+	%_global.main.25 = add, i32 1, i32 0
+	%_global.main.26 = load i32, i32* %_global.main.24
+	store i32 %_global.main.25, i32* %_global.main.24
+	%_global.main.27 = load i32, i32* %_global.main.24
+	br For-Condition8
+For-Condition8:
+	%_global.main.28 = load i32, i32* %_global.main.24
+	%_global.main.29 = load i32, i32* %_global.main.1
+	%_global.main.30 = icmp ule, i32 %_global.main.28, i32 %_global.main.29
+	br i8 %_global.main.30 For-Body9, Succeed11
+For-Body9:
+	%_global.main.31 = load i32, i32* %_global.main.5
+	%_global.main.32 = add, i32 10, i32 0
+	%_global.main.33 = add, i32 %_global.main.31, i32 %_global.main.32
+	%_global.main.34 = load i32, i32* %_global.main.24
+	%_global.main.35 = add, i32 %_global.main.33, i32 %_global.main.34
+	%_global.main.36 = load i32, i32* %_global.main.5
+	store i32 %_global.main.35, i32* %_global.main.5
+	%_global.main.37 = load i32, i32* %_global.main.5
+	br For-Incr10
+For-Incr10:
+	%_global.main.38 = load i32, i32* %_global.main.24
+	%_global.main.39 = load i32, i32* %_global.main.24
+	%_global.main.40 = add, i32 %_global.main.39, i32 1
+	store i32 %_global.main.40, i32* %_global.main.24
+	br For-Condition8
+Succeed11:
+	%_global.main.41 = load i32, i32* %_global.main.5
+	store i32 %_global.main.41, i32* %_global.main.0
+	br End4
+End4:
+	%_global.main.42 = load i32, i32* %_global.main.0
+	ret i32 %_global.main.42
 }
+
+link i32 @_global.length(_string %this);
+
+link i32 @_string.parseInt(_string %this);
+
+link _string @_string.substring(_string %this, i32 %l, i32 %r);
+
+link i32 @_string.ord(_string %this, i32 %index);
