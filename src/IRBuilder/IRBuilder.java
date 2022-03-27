@@ -723,12 +723,12 @@ public class IRBuilder {
         CurBlock.InsertInstr(NewAddi);
         CurBlock.InsertInstr(NewMalloc);
         CurBlock.InsertInstr(SizeStore);
+        if(CurDemension != 0) {
+            StoreInstr PtrStore = new StoreInstr(InstrSeg.store, Rd, PtrType, Ptr, PtrType + PointerChar, false, false);
+            ScopeStack.peek().MatchPtr(Rd, Ptr);
+            CurBlock.InsertInstr(PtrStore);
+        }
         if (CurDemension != AllSize.size()-1) {
-            if(CurDemension != 0) {
-                StoreInstr PtrStore = new StoreInstr(InstrSeg.store, Rd, PtrType, Ptr, PtrType + PointerChar, false, false);
-                ScopeStack.peek().MatchPtr(Rd, Ptr);
-                CurBlock.InsertInstr(PtrStore);
-            }
             IRBlock NewCondition = new IRBlock(BlockType.Condition, "NewArrayCondition", BlockNum++);
             IRBlock NewBlock = new IRBlock(BlockType.Basic, "NewArrayBody", BlockNum++);
             IRBlock NewIncr = new IRBlock(BlockType.Basic, "NewArrayIncr", BlockNum++);
