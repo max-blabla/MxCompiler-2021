@@ -103,6 +103,10 @@ public class SemanticChecker extends MxBaseListener{
     GlobalAST Program;
     HashSet<String> KeepinToken;
     //HashMap<String,IdInfo> TempIdentitySet;
+    Boolean HasLambda = false;
+    public Boolean HasLambda(){
+        return HasLambda;
+    }
     void ClassGather(BaseAST Root) throws ErrorInfo {
         //收集类变量和this，收集类名，加内置类型
         if(Root instanceof GlobalAST){
@@ -736,6 +740,7 @@ public class SemanticChecker extends MxBaseListener{
                 return FuncParam.get(0);
             }
             case Lambda -> {
+                HasLambda = true;
                 LambdaExprAST LambdaNode = (LambdaExprAST) Root.LeftSonExpr;
                 List<IdInfo> FuncParam = new ArrayList<>();
                 IdInfo Ret = new IdInfo();
