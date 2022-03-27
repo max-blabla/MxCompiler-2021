@@ -483,7 +483,13 @@ public class IRBuilder {
         IRBlock Body = FindLoopBody(CurBlock);
         IRBlock Father = Body.Father;
         IRBlock Condition = null;
-        for (IRBlock block : Father.SubBlocks) if (block.blockType == BlockType.Condition) Condition = block;
+        Boolean IsFor;
+        if(Body.Label.startsWith("For")) IsFor = true;
+        else IsFor = false;
+        for (IRBlock block : Father.SubBlocks){
+            if (!IsFor && block.blockType == BlockType.Condition) Condition = block;
+            if (IsFor && block.blockType == BlockType.Incr) Condition = block;
+        }
         BranchInstr Jump;
         if (JumpStmt.isBreak())
             Jump = new BranchInstr(InstrSeg.br, Father.SubBlocks.get(Father.SubBlocks.size() - 1).Label, "", "");
@@ -593,7 +599,7 @@ public class IRBuilder {
         IRBlock NewBodyBlock = new IRBlock(BlockType.Body, "For-Body", BlockNum++);
         CurBlock.InsertSubBlock(NewBodyBlock);
 
-        IRBlock IncrBlock = new IRBlock(BlockType.Basic, "For-Incr", BlockNum++);
+        IRBlock IncrBlock = new IRBlock(BlockType.Incr, "For-Incr", BlockNum++);
         CurBlock.InsertSubBlock(IncrBlock);
 
         IRBlock SucceedBlock = new IRBlock(BlockType.Basic, "Succeed", BlockNum++);
@@ -1095,13 +1101,13 @@ public class IRBuilder {
             }
             case Not->{
                 String Rd = Func.NewReg();
-                OperationInstr CmpOp = new OperationInstr(InstrSeg.icmp,Left.Name,StrZero,Left.Type,Left.Type,Rd,InstrSeg.eq);
+                OperationInstr CmpOp = new OperationInstr(InstrSeg.icmp,Rd,Left.Name,StrZero,Left.Type,Left.Type,InstrSeg.eq);
                 CurBlock.InsertInstr(CmpOp);
                 Ret = new IRValue(Left.Type,Rd);
             }
             case Tidle->{
                 String Rd = Func.NewReg();
-                OperationInstr XOrOp = new OperationInstr(InstrSeg.xor, Left.Name, StrNegOne, Left.Type, Left.Type, Rd, InstrSeg.nullseg);
+                OperationInstr XOrOp = new OperationInstr(InstrSeg.xor,Rd, Left.Name, StrNegOne, Left.Type, Left.Type, InstrSeg.nullseg);
                 CurBlock.InsertInstr(XOrOp);
                 Ret = new IRValue(Left.Type,Rd);
             }

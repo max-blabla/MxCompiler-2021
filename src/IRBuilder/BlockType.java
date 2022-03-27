@@ -6,5 +6,6 @@ public enum BlockType{
     Basic,
     Body,
     Start,
+    Incr,
     End
 }
