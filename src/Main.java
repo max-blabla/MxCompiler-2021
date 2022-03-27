@@ -18,17 +18,14 @@ import java.io.*;
 import java.util.Vector;
 import ASTBuilder.ASTBuilder;
 import IRBuilder.IRBuilder;
-import IRBuilder.IROutput;
 import IRBuilder.PostIRBuilder;
-
-import javax.lang.model.type.TypeVisitor;
 
 public class Main {
     public static void main(String args[]) {
             try {
                 String InputFile;
              //   InputFile = "./Compiler-2021-testcases/codegen/e" + 1 + ".mx";
-         //           String IROutputFile = "./src/IROutput/test.ll";
+                    String IROutputFile = "./src/IROutput/test.ll";
     //                String CGOutputFile = "./src/CGOutput/test.s";
                     //  String CGOutputFile = "D://Coding/ravel-master/build/test.s";
                         String CGOutputFile = "output.s";
@@ -53,17 +50,16 @@ public class Main {
                     PostAstBuilder.SetProgram(AstBuilder.getGlobalAST());
                     PostAstBuilder.ConstSpread();
                     GlobalAST Program = PostAstBuilder.GetProgram();
-                    IRBuilder IR = new IRBuilder(Program);
-                    IR.ProgramIR();
-                    PostIRBuilder PostIrBuilder = new PostIRBuilder();
-                    PostIrBuilder.setModuleList(IR.GetModuleList());
-                    //   PostIrBuilder.BlockMerging();
-                    PostIrBuilder.RemoveRedundant();
-
-       //             IROutput IROut = new IROutput(IR.GetModuleList());
-       //             IROut.FileRun(IROutputFile);
+                    IRBuilder IR = new IRBuilder();
+                    IR.RunIR(Program);
+              //  PostIRBuilder PostIrBuilder = new PostIRBuilder();
+             //   PostIrBuilder.setModuleList(IR.GetModuleList());
+             //   PostIrBuilder.StartOpt();
+                //   PostIrBuilder.BlockMerging();
+                //PostIrBuilder.RemoveRedundant();
+                IR.FileRun(IROutputFile);
                     CodeGenerator CodeGen = new CodeGenerator();
-                    CodeGen.setModuleList(IR.GetModuleList());
+                    CodeGen.setIRInit(IR.GetModuleList(),IR.getConstStrs());
                     CodeGen.CodeGenerate();
                     PrintStream Os = new PrintStream(CGOutputFile);
                     CodeGen.CodeOutput(Os);
