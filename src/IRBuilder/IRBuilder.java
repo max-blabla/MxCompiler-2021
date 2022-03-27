@@ -881,7 +881,7 @@ public class IRBuilder {
                 String Id = LabelNode.getId();
                 if(Root.Father.Father instanceof ExprAST) GrFatherNode = (ExprAST) Root.Father.Father ;
                 else GrFatherNode = null;
-                if(GrFatherNode == null || !( GrFatherNode.getType() == ExprType.MemCall && Root == GrFatherNode.getRightSonExpr().getLeftSonExpr())) {
+                if(GrFatherNode == null || (!( GrFatherNode.getType() == ExprType.MemCall && Root == GrFatherNode.getRightSonExpr().getLeftSonExpr())&& !( GrFatherNode.getType() == ExprType.FuncCall && Root == GrFatherNode.getLeftSonExpr().getLeftSonExpr()))) {
                     //判断是否为 堆上 还是 栈上
                     //好像函数和变量不会重名，因此只管找就好
                     if (FindLabelPtr(Id) != null) {
