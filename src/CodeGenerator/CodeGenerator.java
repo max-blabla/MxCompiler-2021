@@ -705,6 +705,7 @@ public class CodeGenerator {
             }
             else if(Instr instanceof PhiInstr ){
                 PhiInstr NewPhi = (PhiInstr) Instr;
+                GetVirtualReg(NewPhi.Rd);
                 PhiSet.add(NewPhi);
              //   NewBlockCode
             }

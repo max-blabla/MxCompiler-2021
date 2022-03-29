@@ -18,9 +18,10 @@ public class BlockSection {
           CodeType Type = CodeList.get(i).codeType;
           if(!(Type == CodeType.BPType || Type == CodeType.JType || Type==CodeType.BType)){
               CodeList.add(i+1,Code);
-              break;
+              return;
           }
       }
+      CodeList.add(0,Code);
     }
 
 

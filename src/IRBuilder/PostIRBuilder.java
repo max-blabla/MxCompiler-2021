@@ -534,22 +534,23 @@ class DominancePass{
     }
 }
 class PhiInsertionInfo{
-    HashMap<String, PhiInstr> BlockPhi;
+    //Block To HashMap
+    HashMap<String, PhiInstr> BlockPhi;//Ptr To PhiInstr;
     PhiInsertionInfo(){
         BlockPhi = new HashMap<>();
     }
-    void NewPhi(String BlockName,String Rd,String Type){
-        BlockPhi.put(BlockName,new PhiInstr(InstrSeg.phi,Rd,Type));
+    void NewPhi(String Ptr,String Rd,String Type){
+        BlockPhi.put(Ptr,new PhiInstr(InstrSeg.phi,Rd,Type));
     }
 }
 class PhiNodeInsertionPass{
     AllocaInfo AloInfo;
     DominanceFrontier DomFron;
-    HashMap<String,PhiInsertionInfo> PhiInsertion;//Key : Ptr
-    HashMap<String,List<String>> CorrespondingMap;//Key : BlockName Value: 在该块的responding
+    HashMap<String,PhiInsertionInfo> PhiInsertion;//Key : Block
+//    HashMap<String,List<String>> CorrespondingMap;//Key : BlockName Value: 在该块的responding
     ControlFlowGraph CFG;
-    HashMap<String,String> IncomingVals;
     HashSet<String> IsVistsed;
+    HashMap<String,Stack<String>> IncomingVals;
     IRFunc CurFunc;
     PhiNodeInsertionPass(AllocaInfo Info, DominanceFrontier DF, IRFunc Func,ControlFlowGraph cfg){
         AloInfo = Info;
@@ -559,7 +560,6 @@ class PhiNodeInsertionPass{
         PhiInsertion = new HashMap<>();
         IncomingVals = new HashMap<>();
         IsVistsed = new HashSet<>();
-        CorrespondingMap = new HashMap<>();
     }
     void Run(){
        ConfigureInsertion();
@@ -568,84 +568,81 @@ class PhiNodeInsertionPass{
        RemoveAlloca();
     }
     private void ConfigureInsertion(){
-        for(Entry<String,CFGNode> entry : CFG.NodeTable.entrySet()) CorrespondingMap.put(entry.getKey(),new ArrayList<>());
+     //   for(Entry<String,CFGNode> entry : CFG.NodeTable.entrySet()) CorrespondingMap.put(entry.getKey(),new ArrayList<>());
         for(Entry<String,PromotionAlloca> entry: AloInfo.AllocaPacks.entrySet()){
             List<String> Defs = new LinkedList<>(entry.getValue().DefBlocks);
-            PhiInsertionInfo Insertion = new PhiInsertionInfo();
             while(Defs.size() != 0){
                 String BB = Defs.get(0);
                 Defs.remove(0);
                 for(RePostOrderPassNode Node : DomFron.FrontierSet.get(BB)){
-                    if(!Insertion.BlockPhi.containsKey(Node.BlockName)){
-                        Insertion.NewPhi(Node.BlockName,CurFunc.NewReg(),entry.getValue().Instr.Type);
+                    if(!PhiInsertion.containsKey(Node.BlockName)) PhiInsertion.put(Node.BlockName,new PhiInsertionInfo());
+                    PhiInsertionInfo NewPhiInsertion = PhiInsertion.get(Node.BlockName);
+                    if(!NewPhiInsertion.BlockPhi.containsKey(entry.getKey())){
+                        NewPhiInsertion.NewPhi(entry.getKey(),CurFunc.NewReg(),entry.getValue().Instr.Type);
+                        PhiInsertion.put(Node.BlockName,NewPhiInsertion);
                         if(! Defs.contains(Node.BlockName )) Defs.add(Node.BlockName);
                     }
                 }
-                CorrespondingMap.get(BB).add(entry.getKey());
             }
-            PhiInsertion.put(entry.getKey(),Insertion);
         }
     }
     private void CompletePhiNode(){
-        for(Entry<String,PromotionAlloca> entry: AloInfo.AllocaPacks.entrySet()) IncomingVals.put(entry.getKey(),"0");
-        Queue<CFGNode> WorkList = new ArrayDeque<>();
-        WorkList.add(CFG.StartNode);
-        CFGNode Top;
-        List<BaseInstr> InstrList;
-        while(WorkList.size() != 0){
-            Top = WorkList.peek();
-           InstrList = Top.Block.getVarInstrList();
-           Iterator<BaseInstr> Iter = InstrList.listIterator();
-            while (Iter.hasNext()) {
-                BaseInstr Instr = Iter.next();
-                if (Instr instanceof LoadInstr) {
-                    LoadInstr Load = (LoadInstr) Instr;
-                    if(IncomingVals.containsKey(Load.RsPtr)) {
-                        OperationInstr RsMove = new OperationInstr(InstrSeg.add, Load.Rd, IncomingVals.get(Load.RsPtr), "0", Load.RdType, "i32", InstrSeg.nullseg);
-                        Top.Block.VarInstrList.set(InstrList.indexOf(Instr), RsMove);
-                    }
-                } else if (Instr instanceof StoreInstr) {
-                    StoreInstr Store = (StoreInstr) Instr;
-                    if(IncomingVals.containsKey(Store.Ptr)) {
-                        IncomingVals.replace(Store.Ptr, Store.Rs);
-                        Iter.remove();
-                    }
-                }
-            }
-
-            if (Top.Suc != null) {
-                for (String Ptrs : CorrespondingMap.get(Top.Block.Label)) {
-                    PhiInstr AimPhi = PhiInsertion.get(Ptrs).BlockPhi.get(Top.Suc.Block.Label);
-                    if(AimPhi != null) {
-                        AimPhi.NewPhiArg(Top.Block.Label, IncomingVals.get(Ptrs), false);
-                        IncomingVals.replace(Ptrs, AimPhi.Rd);
-                    }
-                }
-                if(!IsVistsed.contains(Top.Suc.Block.Label)) {
-                    IsVistsed.add(Top.Suc.Block.Label);
-                    WorkList.add(Top.Suc);
-                }
-            }
-            if (Top.BrSuc != null) {
-                for (String Ptrs : CorrespondingMap.get(Top.Block.Label)) {
-                    PhiInstr AimPhi = PhiInsertion.get(Ptrs).BlockPhi.get(Top.BrSuc.Block.Label);
-                    if(AimPhi != null) {
-                        AimPhi.NewPhiArg(Top.Block.Label, IncomingVals.get(Ptrs), false);
-                        IncomingVals.replace(Ptrs, AimPhi.Rd);
-                    }
-                }
-                if(!IsVistsed.contains(Top.BrSuc.Block.Label)) {
-                    IsVistsed.add(Top.BrSuc.Block.Label);
-                    WorkList.add(Top.BrSuc);
-                }
-            }
-            WorkList.remove();
+        for (Entry<String, PromotionAlloca> entry : AloInfo.AllocaPacks.entrySet()) {
+            Stack<String> ValStack = new Stack<>();
+            ValStack.push("0");
+            IncomingVals.put(entry.getKey(), ValStack);
         }
+        CompletePhiNodeDfs(CFG.StartNode);
+    }
+    private void CompletePhiNodeDfs(CFGNode CurNode) {
+        if(IsVistsed.contains(CurNode.Block.Label)) return;
+        IsVistsed.add(CurNode.Block.Label);
+        Iterator<BaseInstr> Iter = CurNode.Block.VarInstrList.listIterator();
+        List<String> Defs = new ArrayList<>();
+        while (Iter.hasNext()) {
+            BaseInstr Instr = Iter.next();
+            if (Instr instanceof LoadInstr) {
+                LoadInstr Load = (LoadInstr) Instr;
+                if (IncomingVals.containsKey(Load.RsPtr)) {
+                    OperationInstr RsMove = new OperationInstr(InstrSeg.add, Load.Rd, IncomingVals.get(Load.RsPtr).peek(), "0", Load.RdType, "i32", InstrSeg.nullseg);
+                    CurNode.Block.VarInstrList.set(CurNode.Block.VarInstrList.indexOf(Instr), RsMove);
+                }
+            } else if (Instr instanceof StoreInstr) {
+                StoreInstr Store = (StoreInstr) Instr;
+                if (IncomingVals.containsKey(Store.Ptr)) {
+                    Defs.add(Store.Ptr);
+                    IncomingVals.get(Store.Ptr).push(Store.Rs);
+                    Iter.remove();
+                }
+            }
+        }
+            System.out.println(CurNode.Block.getLabel());
+            if (CurNode.Suc != null) {
+                PhiInsertionInfo SucPhis = PhiInsertion.get(CurNode.Suc.Block.Label);
+                if (SucPhis != null) for (Entry<String, PhiInstr> e : SucPhis.BlockPhi.entrySet()) {
+                    e.getValue().NewPhiArg(CurNode.Block.Label, IncomingVals.get(e.getKey()).peek(), false);
+                    IncomingVals.get(e.getKey()).push(e.getValue().Rd);
+                    Defs.add(e.getKey());
+                }
+                CompletePhiNodeDfs(CurNode.Suc);
+            }
+            if (CurNode.BrSuc != null) {
+                PhiInsertionInfo SucPhis = PhiInsertion.get(CurNode.BrSuc.Block.Label);
+                if (SucPhis != null) for (Entry<String, PhiInstr> e : SucPhis.BlockPhi.entrySet()) {
+                    e.getValue().NewPhiArg(CurNode.Block.Label, IncomingVals.get(e.getKey()).peek(), false);
+                    IncomingVals.get(e.getKey()).push(e.getValue().Rd);
+                    Defs.add(e.getKey());
+
+                }
+                CompletePhiNodeDfs(CurNode.BrSuc);
+            }
+            for (String Str : Defs) IncomingVals.get(Str).pop();
+
     }
     private void PhiInstrInsertion(){
         for(Entry<String, PhiInsertionInfo> entry:PhiInsertion.entrySet()){
             for(Entry<String, PhiInstr> PhiEntry : entry.getValue().BlockPhi.entrySet()){
-                CFG.NodeTable.get(PhiEntry.getKey()).Block.PushInstr(PhiEntry.getValue());
+                CFG.NodeTable.get(entry.getKey()).Block.PushInstr(PhiEntry.getValue());
             }
         }
     }
