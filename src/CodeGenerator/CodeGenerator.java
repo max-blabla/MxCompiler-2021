@@ -52,6 +52,7 @@ public class CodeGenerator {
     HashMap<Integer,String> InvImmName;
     HashMap<String,String> LabelToClang;
     HashMap<Integer,String> VirStack;
+    List<PhiInstr> PhiSet;
     Integer StackTop;
     Integer StackBottom;
     Integer BlockCnt = 0;
@@ -197,6 +198,7 @@ public class CodeGenerator {
         ++FuncCnt;
         BlockCnt = 0;
         CurFuncParam = AllFuncParams.get(irFunc.getFuncName());
+        PhiSet = new ArrayList<>();
         VirName = new HashMap<>();
         InvVirName = new HashMap<>();
         ImmName = new HashMap<>();
@@ -234,6 +236,7 @@ public class CodeGenerator {
             BlockGen(irFunc.getEnd(), NewFunc);
         }
         else EndBlockAdjust(NewFunc,TrueEndBlock);
+        PhiInsert();
         NewFunc.BlocksCode = TransCode(NewFunc);
         NewFunc.BlocksCode = RegDistribute(NewFunc.BlocksCode);
         NewFunc.BlocksCode.add(0,Start);
@@ -405,6 +408,23 @@ public class CodeGenerator {
             Block.CodeList.add(Store);
         }
         return NewTriple;
+    }
+    void PhiInsert(){
+        for(PhiInstr NewPhi : PhiSet){
+            Integer VirRd = GetVirtualReg(NewPhi.Rd);
+            for(int i = 0 ; i < NewPhi.PreBlock.size();i++){
+                BlockSection Block =BlockMap.get(NewPhi.PreBlock.get(i));
+                if(NewPhi.IsImm.get(i)) {
+                    ICode NewAddi = new ICode(OpType.addi,VirRd,VirZero,NewPhi.PhiValue.get(i),-1);
+                    Block.PhiInsert(NewAddi);
+                }
+                else{
+                    Integer VirRs = GetVirtualReg(NewPhi.PhiValue.get(i));
+                    ICode NewAddi = new ICode(OpType.addi,VirRd,VirRs,"0",-1);
+                    Block.PhiInsert(NewAddi);
+                }
+            }
+        }
     }
     ArrayList<BlockSection> RegDistribute(List<BlockSection> BlockList){
         ArrayList<BlockSection> NewBlockList = new ArrayList<>();
@@ -685,19 +705,7 @@ public class CodeGenerator {
             }
             else if(Instr instanceof PhiInstr ){
                 PhiInstr NewPhi = (PhiInstr) Instr;
-                Integer VirRd = GetVirtualReg(NewPhi.Rd);
-                for(int i = 0 ; i < NewPhi.PreBlock.size();i++){
-                    BlockSection Block =BlockMap.get(NewPhi.PreBlock.get(i));
-                    if(NewPhi.IsImm.get(i)) {
-                        ICode NewAddi = new ICode(OpType.addi,VirRd,VirZero,NewPhi.PhiValue.get(i),-1);
-                        Block.PhiInsert(NewAddi);
-                    }
-                    else{
-                        Integer VirRs = GetVirtualReg(NewPhi.PhiValue.get(i));
-                        ICode NewAddi = new ICode(OpType.addi,VirRd,VirRs,"0",-1);
-                        Block.PhiInsert(NewAddi);
-                    }
-                }
+                PhiSet.add(NewPhi);
              //   NewBlockCode
             }
             else if(Instr instanceof ReturnInstr){
