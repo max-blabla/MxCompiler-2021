@@ -1,0 +1,33 @@
+package IRBuilder;
+
+public enum InstrSeg {
+    phi,
+    alloca,
+    store,
+    load,
+    getelemenptr,
+    add,
+    mul,
+    rem,
+    sub,
+    div,
+    ret,
+    br,
+    icmp,
+    eq,
+    uge,
+    ne,
+    ult,
+    ule,
+    ugt,
+    xor,
+    or,
+    and,
+    sll,
+    sra,
+    link,
+    call,
+    offset,
+    index,
+    nullseg
+}
