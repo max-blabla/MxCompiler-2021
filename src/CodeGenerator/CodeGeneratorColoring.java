@@ -1,29 +1,38 @@
 package CodeGenerator;
 
 import IRBuilder.*;
-import CodeGenerator.OpType;
 import org.w3c.dom.Node;
 
-import javax.lang.model.util.AbstractElementVisitor8;
-import java.awt.*;
 import java.io.PrintStream;
-import java.util.*;
-import java.util.List;
 import java.util.Map.Entry;
+import java.util.*;
 
-import static IRBuilder.InstrSeg.index;
-import static IRBuilder.InstrSeg.offset;
-
-class Triple{
-    RegType Rd;
-    RegType Rs1;
-    RegType Rs2;
+class CFGNode{
+    BlockSection BlockCodes;
+    String Suc;
+    String BrSuc;
+    CFGNode SucNode;
+    CFGNode BrSucNode;
+    List<CFGNode> PreNodes;
+    HashSet<String> UseVir;
+    HashSet<String> DefVir;
+    HashSet<String> In;
+    HashSet<String> Out;
+    CFGNode(BlockSection blockCodes){
+        BlockCodes = blockCodes;
+        PreNodes = new ArrayList<>();
+        In = new HashSet<>();
+        Out = new HashSet<>();
+    }
+    void AddUse(String Use){
+        UseVir.add(Use);
+    }
+    void AddDef(String Def){
+        DefVir.add(Def);
+    }
 }
 
-
-
-//确定一下规范：分配寄存器的时候应当只考虑指针可能有两种，内置或虚，虚要Load出来
-public class CodeGenerator {
+public class CodeGeneratorColoring {
     Integer VirT0 = 6;
     Integer VirT1 = 7;
     Integer VirZero = 1;
@@ -80,16 +89,16 @@ public class CodeGenerator {
         Stream.println("\t.text");
         for(FunctionSection Func : FunctionsCode)
             Func.Output(Stream);
-        for(Entry<String,GlobalSection> entry : GlobalVariables.entrySet())
+        for(Map.Entry<String,GlobalSection> entry : GlobalVariables.entrySet())
             entry.getValue().Output(Stream);
     }
-    public void CodeGenerate(){
+/*    public void CodeGenerate(){
         GlobalInit();
         for(IRModule module:ModuleList){
             FuncGen(module.getInit());
             for(IRFunc func : module.getFuncSet()) FuncGen(func);
         }
-    }
+    }*/
     List<String> GetVirFuncParam(IRFunc func){
         List<String> FuncParam = new ArrayList<>();
         for(Param value : func.getParamList()) FuncParam.add(value.getName());
@@ -167,12 +176,12 @@ public class CodeGenerator {
                 break;
             }
         }
-        for(Entry<String,Integer> entry : Global.getClassPtrIndex().entrySet()){
+        for(Map.Entry<String,Integer> entry : Global.getClassPtrIndex().entrySet()){
             Integer Size = 4;
             GlobalSection NewSec = new GlobalSection(entry.getKey(),"",Size);
             GlobalVariables.put(entry.getKey(),NewSec);
         }
-        for(Entry<String,String> entry:ConstStr.entrySet()){
+        for(Map.Entry<String,String> entry:ConstStr.entrySet()){
             Integer Size = 4;
             GlobalSection NewSec = new GlobalSection(entry.getKey(),entry.getValue(),Size);
             GlobalVariables.put(entry.getKey(),NewSec);
@@ -199,7 +208,6 @@ public class CodeGenerator {
         InvVirName = new HashMap<>();
         ImmName = new HashMap<>();
         InvImmName = new HashMap<>();
-        BlockMap = new HashMap<>();
         LabelToClang = new HashMap<>();
         ImmName.put(NullImm,0);
         InvImmName.put(0,NullImm);
@@ -213,18 +221,17 @@ public class CodeGenerator {
         }
         VirStack = new HashMap<>();
     }
-    void FuncGen(IRFunc irFunc){
-     //   if(irFunc.getInline()) return;
+   /* void FuncGen(IRFunc irFunc){
+        //   if(irFunc.getInline()) return;
         if(irFunc == null) return ;
         if(irFunc.getLinked()) return;
         FuncInit(irFunc);
         FunctionSection NewFunc;
         if(Objects.equals(irFunc.getFuncName(), "_global.main")) NewFunc  = new FunctionSection("main");
         else NewFunc = new FunctionSection(irFunc.getFuncName());
+        BlockMap = new HashMap<>();
         BlockSection Start = new BlockSection("","");
         StackBottom -= 16;
-        BlockMapBuild(irFunc.getStart(),NewFunc);
-        BlockMapBuild(irFunc.getEnd(),NewFunc);
         BlockGen(irFunc.getStart(),NewFunc);
         BlockGen(irFunc.getEnd(),NewFunc);
         NewFunc.BlocksCode = TransCode(NewFunc);
@@ -236,8 +243,8 @@ public class CodeGenerator {
         MCode Ret = new MCode("ret",0);
         NewFunc.BlocksCode.get(NewFunc.BlocksCode.size()-1).CodeList.add(Ret);
         FunctionsCode.add(NewFunc);
-    }
-    ArrayList<BlockSection> TransCode(FunctionSection Func){
+    }*/
+/*    ArrayList<BlockSection> TransCode(FunctionSection Func){
         ArrayList<BlockSection> NewBlocks = new ArrayList<>();
         for(BlockSection Block : Func.BlocksCode) {
             BlockSection NewBlock = new BlockSection(Block.BlockLable, Block.IRBlockLabel);
@@ -345,111 +352,6 @@ public class CodeGenerator {
         }
         return NewBlocks;
     }
-    Triple TrueReg(Integer Rd,Integer Rs1, Integer Rs2,BaseCode Self, BlockSection Block){
-        Triple NewTriple = new Triple();
-        if(Rs1 > 0 && Rs1 < BuiltinReg) NewTriple.Rs1 = TrueReg.get(Rs1);
-        else if(Rs1 != 0) {
-            if (Rs1 - BuiltinReg < CurFuncParam.size()) {
-                int ParamIndex = Rs1 - BuiltinReg;
-                if (ParamIndex < 8) NewTriple.Rs1 = TrueReg.get(11 + ParamIndex);
-                else {
-                    NewTriple.Rs1 = RegType.t0;
-                    LCode Load = new LCode(OpType.lw, VirNull, VirNull, RegType.t0, RegType.sp,
-                            Integer.toString(4 * (CurFuncParam.size() - ParamIndex-1)), Self.Line);
-                    Block.CodeList.add(Load);
-                }
-            } else {
-                NewTriple.Rs1 = RegType.s0;
-                LCode Load = new LCode(OpType.lw, VirNull, VirNull, RegType.s0, RegType.sp,
-                        StackPos(Rs1), Self.Line);
-                Block.CodeList.add(Load);
-            }
-        }
-        if(Rs2>0 && Rs2 < BuiltinReg) NewTriple.Rs2 = TrueReg.get(Rs2);
-        else if(Rs2 !=0 ){
-            NewTriple.Rs2 = RegType.s1;
-            LCode Load =new LCode(OpType.lw,VirNull,VirNull,RegType.s1,RegType.sp, StackPos(Rs2),Self.Line);
-            Block.CodeList.add(Load);
-        }
-        Block.CodeList.add(Self);
-        if(Rd > 0 && Rd < BuiltinReg ) NewTriple.Rd = TrueReg.get(Rd);
-        else if(Rd < 0) {
-            int ParamIndex = Integer.parseInt(InvVirName.get(Rd).substring(6));
-            if (ParamIndex <= 8) NewTriple.Rd = TrueReg.get(10 + ParamIndex);
-            else {
-                SCode Store = new SCode(OpType.sw, VirNull, VirNull, RegType.t0, RegType.sp,
-                        Integer.toString(4 * (ParamIndex - 9)), Self.Line);
-                NewTriple.Rd = RegType.t0;
-                Block.CodeList.add(Store);
-            }
-        }
-        else if(Rd != 0){
-            NewTriple.Rd = RegType.s0;
-            SCode Store = new SCode(OpType.sw,VirNull,VirNull, RegType.s0,RegType.sp,StackPos(Rd),Self.Line);
-            Block.CodeList.add(Store);
-        }
-        return NewTriple;
-    }
-    ArrayList<BlockSection> RegDistribute(List<BlockSection> BlockList){
-        ArrayList<BlockSection> NewBlockList = new ArrayList<>();
-        for(BlockSection Block : BlockList){
-            BlockSection NewBlock = new BlockSection(Block.BlockLable,Block.IRBlockLabel);
-            for(BaseCode Code :Block.CodeList){
-                if(Code instanceof ICode) {
-                    ICode ImmCode = (ICode) Code;
-                    ImmCode.SetTrue(TrueReg(ImmCode.VirRd,ImmCode.VirRs,VirNull,Code,NewBlock));
-                }
-                else if(Code instanceof SCode){
-                    SCode StoreCode = (SCode) Code;
-                    StoreCode.SetTrue(TrueReg(VirNull,StoreCode.VirRs1,StoreCode.VirRs2,Code,NewBlock));
-                }
-                else if(Code instanceof LCode){
-                    LCode LoadCode = (LCode) Code;
-                    LoadCode.SetTrue(TrueReg(LoadCode.VirRd,LoadCode.VirRs,VirNull,Code,NewBlock));
-                }
-                else if(Code instanceof RCode){
-                   RCode OpCode = (RCode) Code;
-                   OpCode.SetTrue(TrueReg(OpCode.VirRd,OpCode.VirRs1,OpCode.VirRs2,Code,NewBlock));
-                }
-                else if(Code instanceof BCode) {
-                    BCode BranchCode = (BCode) Code;
-                    BranchCode.SetTrue(TrueReg(VirNull,BranchCode.VirRs1,BranchCode.VirRs2,Code,NewBlock));
-                }
-                else if(Code instanceof MCode){
-                    MCode ManageCode = (MCode) Code;
-                    NewBlock.CodeList.add(ManageCode);
-                }
-                else if(Code instanceof CCode){
-                    CCode ControlCode = (CCode) Code;
-                    NewBlock.CodeList.add(ControlCode);
-                }
-                else if(Code instanceof JCode){
-                    JCode JumpCode = (JCode) Code;
-                    JumpCode.Block = LabelToClang.get(JumpCode.Block);
-                    NewBlock.CodeList.add(JumpCode);
-                }
-                else if(Code instanceof UCode){
-                    UCode UpperCode = (UCode) Code;
-                    UpperCode.SetTrue(TrueReg(UpperCode.VirRd,VirNull,VirNull,Code,NewBlock));
-                }
-                else if(Code instanceof BPCode){
-                    BPCode BrPeCode = (BPCode) Code;
-                    BrPeCode.Label = LabelToClang.get(BrPeCode.Label);
-                    BrPeCode.SetTrue(TrueReg(VirNull,BrPeCode.VirRs,VirNull,Code,NewBlock));
-                }
-                else{
-                    PCode PesudoCode = (PCode) Code;
-                    PesudoCode.SetTrue(TrueReg(PesudoCode.VirRd,PesudoCode.VirRs,VirNull,Code,NewBlock));
-                }
-            }
-            NewBlockList.add(NewBlock);
-        }
-        return NewBlockList;
-    }
-
-
-
-
     Integer GetVirtualReg(String User){
         if(VirName.containsKey(User)) return VirName.get(User);
         else if(User.startsWith(".param")){
@@ -466,21 +368,16 @@ public class CodeGenerator {
             return Ret;
         }
     }
-    void BlockMapBuild(IRBlock irBlock,FunctionSection func){
+    void BlockGen(IRBlock irBlock, FunctionSection func){
         if(irBlock == null) return;
         ++BlockCnt;
         String ClangName = ".LBB"+FuncCnt + "_" +BlockCnt;
         LabelToClang.put(irBlock.getLabel(),ClangName);
         BlockSection NewBlockCode = new BlockSection(ClangName,irBlock.getLabel());
         BlockMap.put(irBlock.getLabel(),NewBlockCode);
-        for(IRBlock Son :irBlock.getSubBlocks()) BlockMapBuild(Son,func);
-    }
-
-    void BlockGen(IRBlock irBlock,FunctionSection func){
-        if(irBlock == null) return;
-        BlockSection NewBlockCode = BlockMap.get(irBlock.getLabel());
         List<BaseInstr> InstrList = irBlock.getVarInstrList();
         InstrList.add(irBlock.getEndInstr());
+        CFGNode NewNode = new CFGNode(NewBlockCode);
         int InstrLine = 0;
         for(BaseInstr Instr : InstrList){
             ++InstrLine;
@@ -508,9 +405,9 @@ public class CodeGenerator {
                 }
                 else {
                     Integer VirPtr = GetVirtualReg(NewIRLoad.RsPtr);
-              //      LCode PtrLoad = new LCode(OpType.lw,VirT0,VirPtr,RegType.NULL,RegType.NULL,"0",InstrLine);
+                    //      LCode PtrLoad = new LCode(OpType.lw,VirT0,VirPtr,RegType.NULL,RegType.NULL,"0",InstrLine);
                     LCode NewLoad = new LCode(OpType.lw,VirRd,VirPtr,RegType.NULL,RegType.NULL,"0", InstrLine);
-              //      NewBlockCode.CodeList.add(PtrLoad);
+                    //      NewBlockCode.CodeList.add(PtrLoad);
                     NewBlockCode.CodeList.add(NewLoad);
                 }
             }
@@ -620,8 +517,8 @@ public class CodeGenerator {
                     NewBlockCode.CodeList.add(NewAddi);
                 }
                 else if(Objects.equals(NewIRGet.Mode, InstrSeg.offset)){
-                        ICode NewOffAddi = new ICode(OpType.addi, VirT2, VirZero, Integer.toString(NewIRGet.Offset/8), InstrLine);
-                        NewBlockCode.CodeList.add(NewOffAddi);
+                    ICode NewOffAddi = new ICode(OpType.addi, VirT2, VirZero, Integer.toString(NewIRGet.Offset/8), InstrLine);
+                    NewBlockCode.CodeList.add(NewOffAddi);
                 }
                 RCode NewPtrAdd = new RCode(OpType.add,VirRd ,VirPtr,VirT2,RegType.NULL,RegType.NULL,RegType.NULL,InstrLine);
                 NewBlockCode.CodeList.add(NewPtrAdd);
@@ -631,6 +528,8 @@ public class CodeGenerator {
                 if(Objects.equals(NewIRBr.Condition, "")){
                     JCode NewJump = new JCode(OpType.j, NewIRBr.Label1,InstrLine);
                     NewBlockCode.CodeList.add(NewJump);
+                    NewNode.Suc = NewIRBr.Label1;
+                    NewNode.BrSuc = "";
                 }
                 else {
                     Integer VirCondi = GetVirtualReg(NewIRBr.Condition);
@@ -638,6 +537,8 @@ public class CodeGenerator {
                     JCode NewBrF = new JCode(OpType.j, NewIRBr.Label1,InstrLine);
                     NewBlockCode.CodeList.add(NewBrT);
                     NewBlockCode.CodeList.add(NewBrF);
+                    NewNode.Suc = NewIRBr.Label1;
+                    NewNode.BrSuc = NewIRBr.Label2;
                 }
             }
             else if(Instr instanceof FuncCallInstr){
@@ -682,7 +583,7 @@ public class CodeGenerator {
                         Block.PhiInsert(NewAddi);
                     }
                 }
-             //   NewBlockCode
+                //   NewBlockCode
             }
             else if(Instr instanceof ReturnInstr){
                 //和call一样，需要交流
@@ -695,5 +596,92 @@ public class CodeGenerator {
         }
         func.BlocksCode.add(NewBlockCode);
         for(IRBlock Son :irBlock.getSubBlocks()) BlockGen(Son,func);
+    }*/
+    void BuildGraph(String CurNodeLabel,HashMap<String,CFGNode> NodeMap){
+        CFGNode CurNode = NodeMap.get(CurNodeLabel);
+        CFGNode SucNode = NodeMap.get(CurNode.Suc);
+        CurNode.SucNode = SucNode;
+        SucNode.PreNodes.add(CurNode);
+        BuildGraph(CurNode.Suc,NodeMap);
+        if(Objects.equals(CurNode.BrSuc, "")){
+            CFGNode BrSucNode = NodeMap.get(CurNode.BrSuc);
+            CurNode.BrSucNode = BrSucNode;
+            BrSucNode.PreNodes.add(BrSucNode);
+            BuildGraph(CurNode.BrSuc,NodeMap);
+        }
     }
+/*    void UseDefAndNodeInit(IRBlock irBlock,HashMap<String,CFGNode> NodeMap){
+        CFGNode NewNode = new CFGNode();
+        NodeMap.put(NewNode);
+        for(BaseInstr Instr : irBlock.getVarInstrList()){
+            if(Instr instanceof AllocaInstr){
+
+            }
+            else if(Instr instanceof LoadInstr){
+
+            }
+            else if(Instr instanceof StoreInstr){
+
+            }
+            else if(Instr instanceof GetelementInstr){
+                GetelementInstr Get = (GetelementInstr) Instr;
+                NewNode.DefVir.add(Get.Rd);
+                NewNode.UseVir.add(Get.Ptr);
+                if(Get.Mode == InstrSeg.index) if(!Get.IsIndexImm) NewNode.UseVir.add(Get.Index);
+
+            }
+            else if(Instr instanceof OperationInstr){
+                OperationInstr Op = (OperationInstr) Instr;
+                NewNode.DefVir.add(Op.Rd);
+                if(!Op.IsRsImm1) NewNode.UseVir.add(Op.Rs1);
+                if(!Op.IsRsImm2) NewNode.UseVir.add(Op.Rs2);
+            }
+            else if(Instr instanceof PhiInstr){
+                PhiInstr Phi = (PhiInstr) Instr;
+                NewNode.DefVir.add(Phi.Rd);
+                for(int i = 0 ; i < Phi.PhiValue.size();i++)
+                    if(!Phi.IsImm.get(i)) NewNode.UseVir.add(Phi.PhiValue.get(i));
+            }
+            else if(Instr instanceof FuncCallInstr){
+                FuncCallInstr Func = (FuncCallInstr) Instr;
+                if(!Objects.equals(Func.Rd, "")) NewNode.DefVir.add(Func.Rd);
+                NewNode.UseVir.addAll(Func.Param);
+            }
+            else if(Instr instanceof BranchInstr){
+                BranchInstr Br = (BranchInstr) Instr;
+                NewNode.Suc = Br.Label1;
+                if(!Objects.equals(Br.Condition, "")){
+                    NewNode.UseVir.add(Br.Condition);
+                    NewNode.Suc = Br.Label2;
+                }
+            }
+            else{
+                ReturnInstr Ret = (ReturnInstr) Instr;
+                if(!Objects.equals(Ret.Rs, "")) NewNode.UseVir.add(Ret.Rs);
+            }
+        }
+    }
+    void LivenessAnalysis(String EndNode,HashMap<String,CFGNode> NodeMap){
+        CFGNode Exit = NodeMap.get(EndNode);
+        boolean IsChanged = true;
+        while(IsChanged){
+            IsChanged = false;
+            for(Entry<String,CFGNode> entry : NodeMap.entrySet()){
+                CFGNode Node = entry.getValue();
+                if(Node != Exit) {
+                    HashSet<String> NewOut = new HashSet<>(Node.SucNode.Out);
+                    if (Node.BrSucNode != null) NewOut.addAll(Node.SucNode.Out);
+                    Node.Out = NewOut;
+                    HashSet<String> NewIn = new HashSet<>(Node.UseVir);
+                    if (!Node.In.containsAll(Node.UseVir)) IsChanged = true;
+                    for (String O : NewOut) {
+                        if (!Node.UseVir.contains(O)) NewIn.add(O);
+                    }
+                    if (!Node.In.containsAll(NewIn)) IsChanged = true;
+                    NewIn.addAll(Node.UseVir);
+                    Node.In = NewIn;
+                }
+            }
+        }
+    }*/
 }

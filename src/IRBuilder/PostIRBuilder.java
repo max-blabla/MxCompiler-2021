@@ -58,6 +58,7 @@ class ControlFlowGraphBuildPass{
         RawCFGRun();
         FuncBlockRenew();
         CFGRun();
+        CFG.StartNode = CFG.NodeTable.get(CurFunc.Start.Label);
     }
 
     private void CFGRun(){
@@ -79,7 +80,7 @@ class ControlFlowGraphBuildPass{
 
     private void CFGNodeConnect(IRBlock Block,HashMap<String,CFGNode> Graph){
         if(Block == null) return;
-        for(IRBlock Sub : Block.SubBlocks) CFGNodeConnect(Sub,Graph);
+        //for(IRBlock Sub : Block.SubBlocks) CFGNodeConnect(Sub,Graph);
         if (Block.EndInstr instanceof BranchInstr) {
             CFGNode NewNode = Graph.get(Block.Label);
             BranchInstr Br = (BranchInstr) Block.EndInstr;
@@ -90,7 +91,7 @@ class ControlFlowGraphBuildPass{
                 NewNode.SetBrSuc(Suc2);
             }
         }
-        for(IRBlock Sub : Block.SubBlocks) CFGNodeBuild(Sub,Graph);
+        for(IRBlock Sub : Block.SubBlocks) CFGNodeConnect(Sub,Graph);
     }
 
     private void PhiGather(IRBlock irBlock,HashMap<String,BlockPhiIndex> PhiIndex){
@@ -171,6 +172,7 @@ class ControlFlowGraphBuildPass{
     private void BlockRenew(CFGNode CurNode,CFGNode End){
         RenewQueue  = new ArrayDeque<>();
         RenewQueue.add(CurNode);
+        Check = new HashSet<>();
         Check.add(CurNode.Block);
         while(!RenewQueue.isEmpty()){
             CFGNode Top = RenewQueue.peek();
@@ -212,13 +214,13 @@ class PromotionAlloca{
     String DebugInfo;
     HashSet<String> DefBlocks;
 
-    PromotionAlloca(AllocaInstr instr,Integer Index) {
+    PromotionAlloca(AllocaInstr instr) {
         Instr = instr;
-        StartBlockIndex = Index;
         UseCnt = 0;
         DefCnt = 0;
         //    BlockName = blockName;
         IsPromotable = true;
+        DefBlocks = new HashSet<>();
     }
     void BanPromotion(){
         IsPromotable = false;
@@ -226,15 +228,19 @@ class PromotionAlloca{
 }
 class RePostOrderDfsInfo{
     Stack<RePostOrderPassNode>  ReDfsPostOrder;
+    HashSet<String> IsReached;
     HashMap<String,RePostOrderPassNode> RePostOrderNodeNameMap;
     ControlFlowGraph CFG;
     RePostOrderDfsInfo(ControlFlowGraph cfg){
         CFG = cfg;
+        IsReached  = new HashSet<>();
         RePostOrderNodeNameMap = new HashMap<>();
         ReDfsPostOrder = new Stack<>();
     }
     private void BuildPostOrder(CFGNode CurNode){
         if(CurNode == null) return;
+        if(IsReached.contains(CurNode.Block.Label)) return;
+        IsReached.add(CurNode.Block.Label);
         String BlockName = CurNode.Block.Label;
         RePostOrderPassNode NewNode = new RePostOrderPassNode(BlockName);
         RePostOrderNodeNameMap.put(BlockName,NewNode);
@@ -258,36 +264,53 @@ class AloBuildSimplifyMemPass{
     ControlFlowGraph CFG;
     AllocaInfo AloInfo;
     HashMap<String,String> GlobalPropogationMap;
+    HashSet<String> IsReached;
     AloBuildSimplifyMemPass(ControlFlowGraph cfg){
         CFG = cfg;
         AloInfo = new AllocaInfo();;
         GlobalPropogationMap = new HashMap<>();
+        IsReached = new HashSet<>();
     }
     void Run(){
+        IsReached = new HashSet<>();
         AllocGather(CFG.StartNode,CFG.StartNode);
+        IsReached = new HashSet<>();
         PromotableCheck(CFG.StartNode);
+        IsReached = new HashSet<>();
         CountUseDef(CFG.StartNode);
+        IsReached = new HashSet<>();
         MemPropogation(CFG.StartNode);
+        IsReached = new HashSet<>();
         ConfigureUse(CFG.StartNode);
     }
     private  void AllocGather(CFGNode CurNode, CFGNode AimNode){
         if(CurNode == null) return;
+        if(IsReached.contains(CurNode.Block.Label)) return;
+        IsReached.add(CurNode.Block.Label);
         AllocGather(CurNode.Suc,AimNode);
         AllocGather(CurNode.BrSuc,AimNode);
         List<BaseInstr> InstrList = CurNode.Block.getVarInstrList();
-        for(int i = InstrList.size()-1;i>=0;i--){
-            BaseInstr Instr = InstrList.get(i);
+        Iterator<BaseInstr> Iter = InstrList.listIterator();
+        List<AllocaInstr> TmpAllocaPack = new ArrayList<>();
+        while(Iter.hasNext()){
+            BaseInstr Instr = Iter.next();
             if(Instr instanceof AllocaInstr){
                 AllocaInstr Alloc = (AllocaInstr) Instr;
-                InstrList.remove(i);
-                AloInfo.AllocaPacks.put(Alloc.Rd,new PromotionAlloca(Alloc,i));
-                AimNode.Block.PushInstr(Instr);
+                Iter.remove();
+                TmpAllocaPack.add(Alloc);
+
             }
+        }
+        for(AllocaInstr Alloc : TmpAllocaPack) {
+            AloInfo.AllocaPacks.put(Alloc.Rd, new PromotionAlloca(Alloc));
+            AimNode.Block.PushInstr(Alloc);
         }
     }
 
     private  void PromotableCheck(CFGNode CurNode){
         if(CurNode == null) return;
+        if(IsReached.contains(CurNode.Block.Label)) return;
+        IsReached.add(CurNode.Block.Label);
         for(BaseInstr Instr :CurNode.Block.VarInstrList){
             if(Instr instanceof GetelementInstr){
                 GetelementInstr Gep = (GetelementInstr) Instr;
@@ -300,7 +323,8 @@ class AloBuildSimplifyMemPass{
 
     private  void CountUseDef(CFGNode CurNode){
         if(CurNode == null) return;
-        String BlockName = CurNode.Block.Label;
+        if(IsReached.contains(CurNode.Block.Label)) return;
+        IsReached.add(CurNode.Block.Label);
         List<BaseInstr> InstrList = CurNode.Block.getVarInstrList();
         for (BaseInstr Instr : InstrList) {
             if (Instr instanceof LoadInstr) {
@@ -317,9 +341,15 @@ class AloBuildSimplifyMemPass{
         CountUseDef(CurNode.BrSuc);
     }
 
+    Boolean IsAllocaEmpty(){
+        return AloInfo.AllocaPacks.isEmpty();
+    }
+
     void MemPropogation(CFGNode StartNode){
         //将一def与一块内传播。在传播完消除无用alloca指令
         if(StartNode == null) return;
+        if(IsReached.contains(StartNode.Block.Label)) return;
+        IsReached.add(StartNode.Block.Label);
         List<BaseInstr> InstrList = StartNode.Block.VarInstrList;
         Iterator<BaseInstr> Iter = InstrList.listIterator();
         HashMap<String,String> LocalPropogationMap = new HashMap<>();
@@ -358,12 +388,12 @@ class AloBuildSimplifyMemPass{
                     PromotionAlloca AllocProPack = AloInfo.AllocaPacks.get(Ptr);
                     int LoadIndex = InstrList.indexOf(Load);
                     if(LocalPropogationMap.containsKey(Ptr)) {
-                        OperationInstr RsMove = new OperationInstr(InstrSeg.add, Load.Rd, LocalPropogationMap.get(Ptr), "", Load.RdType, "i32", InstrSeg.nullseg);
+                        OperationInstr RsMove = new OperationInstr(InstrSeg.add, Load.Rd, LocalPropogationMap.get(Ptr), "0", Load.RdType, "i32", InstrSeg.nullseg);
                         InstrList.set(LoadIndex,RsMove);
                         --AllocProPack.UseCnt;
                     }
                     else if(GlobalPropogationMap.containsKey(Ptr)){
-                        OperationInstr RsMove = new OperationInstr(InstrSeg.add, Load.Rd, GlobalPropogationMap.get(Ptr), "", Load.RdType, "i32", InstrSeg.nullseg);
+                        OperationInstr RsMove = new OperationInstr(InstrSeg.add, Load.Rd, GlobalPropogationMap.get(Ptr), "0", Load.RdType, "i32", InstrSeg.nullseg);
                         InstrList.set(LoadIndex,RsMove);
                         --AllocProPack.UseCnt;
                     }
@@ -382,6 +412,8 @@ class AloBuildSimplifyMemPass{
 
     void ConfigureUse(CFGNode CurNode){
         if(CurNode == null) return;
+        if(IsReached.contains(CurNode.Block.Label)) return;
+        IsReached.add(CurNode.Block.Label);
         String BlockName = CurNode.Block.Label;
         List<BaseInstr> InstrList = CurNode.Block.getVarInstrList();
         for (BaseInstr Instr : InstrList) {
@@ -391,8 +423,8 @@ class AloBuildSimplifyMemPass{
                 if (AloInfo.AllocaPacks.containsKey(Ptr)) AloInfo.AllocaPacks.get(Ptr).DefBlocks.add(BlockName);
             }
         }
-        CountUseDef(CurNode.Suc);
-        CountUseDef(CurNode.BrSuc);
+        ConfigureUse(CurNode.Suc);
+        ConfigureUse(CurNode.BrSuc);
     }
 
      AllocaInfo GetAllocaInfo(){
@@ -416,7 +448,8 @@ class DominancePass{
             DomFron.FrontierSet.put(Node.BlockName,new ArrayList<>());
         }
         RePostOrderPassNode Runner;
-        for(RePostOrderPassNode Node:Info.ReDfsPostOrder){
+        for(int i = Info.ReDfsPostOrder.size()-1;i>=0;i--){
+            RePostOrderPassNode Node = Info.ReDfsPostOrder.get(i);
             if(Node.Predecessors.size() >= 2){
                 for(String Pres:Node.Predecessors){
                     Runner = Info.RePostOrderNodeNameMap.get(Pres);
@@ -445,29 +478,34 @@ class DominancePass{
     }
     private  void ConfigureDominance(){
         for(RePostOrderPassNode Node:Info.ReDfsPostOrder) Doms.put(Node.BlockName,null);
+        for(RePostOrderPassNode Node:Info.ReDfsPostOrder) FingerTable.put(Node.BlockName,Integer.MAX_VALUE);
         RePostOrderPassNode StartNode = Info.ReDfsPostOrder.peek();
-        FingerTable.put(StartNode.BlockName,0);
+        FingerTable.replace(StartNode.BlockName,0);
+        IsProcessed.add(StartNode.BlockName);
         Doms.replace(StartNode.BlockName,StartNode);
         boolean IsChanged = true;
         while(IsChanged){
             IsChanged  = false;
-            for(RePostOrderPassNode Node:Info.ReDfsPostOrder){
+            for(int i = Info.ReDfsPostOrder.size()-1;i>=0;i--){
+                RePostOrderPassNode Node = Info.ReDfsPostOrder.get(i);
                 if(Node == StartNode) continue;
-                RePostOrderPassNode NewIdom =null;
-                for(String Pres:Node.Predecessors) if(IsProcessed.contains(Pres)) NewIdom = Info.RePostOrderNodeNameMap.get(Pres);
-                assert NewIdom != null;
+                RePostOrderPassNode NewIdom;
+                RePostOrderPassNode FirstProcessPre =null;
+                for(String Pres:Node.Predecessors) if(IsProcessed.contains(Pres)) FirstProcessPre = Info.RePostOrderNodeNameMap.get(Pres);
+                assert FirstProcessPre != null;
+                NewIdom = FirstProcessPre;
                 for(String Pres:Node.Predecessors){
                     RePostOrderPassNode OtherNode = Info.RePostOrderNodeNameMap.get(Pres);
-                    if(OtherNode == NewIdom) continue;
-                    if(Doms.get(OtherNode.BlockName) == NewIdom)  NewIdom = Intersect(OtherNode.BlockName,NewIdom.BlockName);
+                    if(OtherNode == FirstProcessPre) continue;
+                    if(Doms.get(OtherNode.BlockName) != null)  NewIdom = Intersect(OtherNode.BlockName,NewIdom.BlockName);
                 }
                 if(NewIdom != Doms.get(Node.BlockName)){
                     Doms.replace(Node.BlockName,NewIdom);
+                    FingerTable.replace(Node.BlockName,FingerTable.get(NewIdom.BlockName)+1);
                     IsChanged = true;
                 }
-                FingerTable.put(Node.BlockName,FingerTable.get(NewIdom.BlockName)+1);
+                IsProcessed.add(Node.BlockName);
             }
-
         }
     }
     private  RePostOrderPassNode Intersect(String N1,String N2){
@@ -475,16 +513,19 @@ class DominancePass{
         String FingerName2 = N2;
         int Finger1 = FingerTable.get(N1);
         int Finger2 = FingerTable.get(N2);
-        while(Finger1 != Finger2){
-            while(Finger1 <Finger2){
+            //小的是父亲
+            while(Finger1>Finger2){
                 FingerName1 = Doms.get(FingerName1).BlockName;
                 Finger1 = FingerTable.get(FingerName1);
             }
-            while(Finger2 <Finger1){
+            while(Finger2 > Finger1){
                 FingerName2 = Doms.get(FingerName2).BlockName;
                 Finger2 = FingerTable.get(FingerName2);
             }
-        }
+            while(!Objects.equals(FingerName1, FingerName2)){
+                FingerName1 = Doms.get(FingerName1).BlockName;
+                FingerName2 = Doms.get(FingerName2).BlockName;
+            }
         return Info.RePostOrderNodeNameMap.get(FingerName1);
     }
 }
@@ -520,6 +561,7 @@ class PhiNodeInsertionPass{
        ConfigureInsertion();
        CompletePhiNode();
        PhiInstrInsertion();
+       RemoveAlloca();
     }
     private void ConfigureInsertion(){
         for(Entry<String,CFGNode> entry : CFG.NodeTable.entrySet()) CorrespondingMap.put(entry.getKey(),new ArrayList<>());
@@ -532,10 +574,10 @@ class PhiNodeInsertionPass{
                 for(RePostOrderPassNode Node : DomFron.FrontierSet.get(BB)){
                     if(!Insertion.BlockPhi.containsKey(Node.BlockName)){
                         Insertion.NewPhi(Node.BlockName,CurFunc.NewReg(),entry.getValue().Instr.Type);
-                        CorrespondingMap.get(BB).add(entry.getKey());
                         if(! Defs.contains(Node.BlockName )) Defs.add(Node.BlockName);
                     }
                 }
+                CorrespondingMap.get(BB).add(entry.getKey());
             }
             PhiInsertion.put(entry.getKey(),Insertion);
         }
@@ -564,28 +606,32 @@ class PhiNodeInsertionPass{
             }
 
             if (Top.Suc != null) {
-                for (String Ptrs : CorrespondingMap.get(Top.Suc.Block.Label)) {
+                for (String Ptrs : CorrespondingMap.get(Top.Block.Label)) {
                     PhiInstr AimPhi = PhiInsertion.get(Ptrs).BlockPhi.get(Top.Suc.Block.Label);
-                    AimPhi.NewPhiArg(Top.Block.Label, IncomingVals.get(Ptrs), false);
-                    IncomingVals.replace(Ptrs, AimPhi.Rd);
+                    if(AimPhi != null) {
+                        AimPhi.NewPhiArg(Top.Block.Label, IncomingVals.get(Ptrs), false);
+                        IncomingVals.replace(Ptrs, AimPhi.Rd);
+                    }
                 }
-                if(IsVistsed.contains(Top.Suc.Block.Label)) {
+                if(!IsVistsed.contains(Top.Suc.Block.Label)) {
                     IsVistsed.add(Top.Suc.Block.Label);
                     WorkList.add(Top.Suc);
                 }
             }
             if (Top.BrSuc != null) {
-                for (String Ptrs : CorrespondingMap.get(Top.BrSuc.Block.Label)) {
+                for (String Ptrs : CorrespondingMap.get(Top.Block.Label)) {
                     PhiInstr AimPhi = PhiInsertion.get(Ptrs).BlockPhi.get(Top.BrSuc.Block.Label);
-                    AimPhi.NewPhiArg(Top.Block.Label, IncomingVals.get(Ptrs), false);
-                    IncomingVals.replace(Ptrs, AimPhi.Rd);
+                    if(AimPhi != null) {
+                        AimPhi.NewPhiArg(Top.Block.Label, IncomingVals.get(Ptrs), false);
+                        IncomingVals.replace(Ptrs, AimPhi.Rd);
+                    }
                 }
-                if(IsVistsed.contains(Top.BrSuc.Block.Label)) {
+                if(!IsVistsed.contains(Top.BrSuc.Block.Label)) {
                     IsVistsed.add(Top.BrSuc.Block.Label);
                     WorkList.add(Top.BrSuc);
                 }
             }
-
+            WorkList.remove();
         }
     }
     private void PhiInstrInsertion(){
@@ -593,6 +639,11 @@ class PhiNodeInsertionPass{
             for(Entry<String, PhiInstr> PhiEntry : entry.getValue().BlockPhi.entrySet()){
                 CFG.NodeTable.get(PhiEntry.getKey()).Block.PushInstr(PhiEntry.getValue());
             }
+        }
+    }
+    private void RemoveAlloca(){
+        for(Entry<String,PromotionAlloca> entry:AloInfo.AllocaPacks.entrySet()){
+            CFG.StartNode.Block.VarInstrList.remove(entry.getValue().Instr);
         }
     }
     ControlFlowGraph GetSSACFG(){
@@ -605,7 +656,7 @@ class PhiNodeInsertionPass{
 
 public class PostIRBuilder {
     List<IRModule> ModuleList;
-    HashMap<String,ControlFlowGraph> FuncCFGs;
+    HashMap<String,ControlFlowGraph> FuncCFGs = new HashMap<>();
 
     public void setModuleList(List<IRModule> moduleList) {
         ModuleList = moduleList;
@@ -648,6 +699,7 @@ public class PostIRBuilder {
             ControlFlowGraph CFG = FuncCFGs.get(Func.FuncName);
             AloBuildSimplifyMemPass AllocaPass = new AloBuildSimplifyMemPass(CFG);
             AllocaPass.Run();
+            if(AllocaPass.IsAllocaEmpty()) return;
             RePostOrderDfsInfo RPO = new RePostOrderDfsInfo(CFG );
             RPO.Build();
             DominancePass DominanceBuildPass = new DominancePass(RPO);
