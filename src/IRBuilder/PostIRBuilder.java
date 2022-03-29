@@ -2,6 +2,7 @@ package IRBuilder;
 
 
 import ASTNode.BaseAST;
+import org.antlr.v4.misc.Graph;
 import org.w3c.dom.Node;
 
 import java.util.*;
@@ -169,7 +170,7 @@ class ControlFlowGraphBuildPass{
         CFGNode Start =CFG.NodeTable.get(CurFunc.Start.Label);
         BlockRenew(Start);
         CurFunc.Start = Start.Block;
-        CurFunc.End = End.Block;
+        CurFunc.End = null;
     }
 
     private void BlockRenew(CFGNode CurNode){

@@ -593,17 +593,7 @@ public class IRBuilder {
     void ForStmtIR(StmtAST ForStmtNode) {
         ForStmtAST ForStmt = (ForStmtAST) ForStmtNode;
 
-        IRBlock NewConditionBlock = new IRBlock(BlockType.Condition, "For-Condition", BlockNum++);
-        CurBlock.InsertSubBlock(NewConditionBlock);
 
-        IRBlock NewBodyBlock = new IRBlock(BlockType.Body, "For-Body", BlockNum++);
-        CurBlock.InsertSubBlock(NewBodyBlock);
-
-        IRBlock IncrBlock = new IRBlock(BlockType.Incr, "For-Incr", BlockNum++);
-        CurBlock.InsertSubBlock(IncrBlock);
-
-        IRBlock SucceedBlock = new IRBlock(BlockType.Basic, "Succeed", BlockNum++);
-        CurBlock.InsertSubBlock(SucceedBlock);
 
         if (ForStmt.getInitStmt() != null) {
             String Type = TransType(ForStmt.getInitStmt().getType());
@@ -617,6 +607,18 @@ public class IRBuilder {
 
             }
         } else ExprToInstr(CurFunc, ForStmt.getInitExpr());
+
+        IRBlock NewConditionBlock = new IRBlock(BlockType.Condition, "For-Condition", BlockNum++);
+        CurBlock.InsertSubBlock(NewConditionBlock);
+
+        IRBlock NewBodyBlock = new IRBlock(BlockType.Body, "For-Body", BlockNum++);
+        CurBlock.InsertSubBlock(NewBodyBlock);
+
+        IRBlock IncrBlock = new IRBlock(BlockType.Incr, "For-Incr", BlockNum++);
+        CurBlock.InsertSubBlock(IncrBlock);
+
+        IRBlock SucceedBlock = new IRBlock(BlockType.Basic, "Succeed", BlockNum++);
+        CurBlock.InsertSubBlock(SucceedBlock);
 
         BranchInstr PreceedJump = new BranchInstr(InstrSeg.br, NewConditionBlock.Label, "", "");
         BranchInstr ForBodyJump = new BranchInstr(InstrSeg.br, IncrBlock.Label, "", "");

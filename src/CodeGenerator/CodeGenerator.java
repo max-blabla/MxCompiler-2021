@@ -229,7 +229,11 @@ public class CodeGenerator {
     //    BlockMapBuild(irFunc.getEnd(),NewFunc);
         BlockGen(irFunc.getStart(),NewFunc);
      //   BlockGen(irFunc.getEnd(),NewFunc);
-        EndBlockAdjust(NewFunc,TrueEndBlock);
+        if(TrueEndBlock == null) {
+            BlockMapBuild(irFunc.getEnd(),NewFunc);
+            BlockGen(irFunc.getEnd(), NewFunc);
+        }
+        else EndBlockAdjust(NewFunc,TrueEndBlock);
         NewFunc.BlocksCode = TransCode(NewFunc);
         NewFunc.BlocksCode = RegDistribute(NewFunc.BlocksCode);
         NewFunc.BlocksCode.add(0,Start);
