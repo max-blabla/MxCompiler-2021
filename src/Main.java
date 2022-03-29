@@ -59,7 +59,7 @@ public class Main {
                     IR.FileRun(IROutputFile);
                 PostIRBuilder PostIrBuilder = new PostIRBuilder();
                 PostIrBuilder.setModuleList(IR.GetModuleList());
-                PostIrBuilder.StartOpt(1);
+                PostIrBuilder.StartOpt(2);
                 //   PostIrBuilder.BlockMerging();
                 //PostIrBuilder.RemoveRedundant();
                 IR.FileRun(OptIROutputFile);
