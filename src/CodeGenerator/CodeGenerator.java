@@ -57,6 +57,7 @@ public class CodeGenerator {
     Integer BlockCnt = 0;
     Integer FuncParamNum = 0;
     Integer FuncCnt = 8;
+    String TrueEndBlock;
 
     //人工对照表：
     // zero 0
@@ -192,6 +193,7 @@ public class CodeGenerator {
         StackTop = 0;
         FuncParamNum = 0;
         StackBottom = 0;
+        TrueEndBlock = null;
         ++FuncCnt;
         BlockCnt = 0;
         CurFuncParam = AllFuncParams.get(irFunc.getFuncName());
@@ -224,9 +226,10 @@ public class CodeGenerator {
         BlockSection Start = new BlockSection("","");
         StackBottom -= 16;
         BlockMapBuild(irFunc.getStart(),NewFunc);
-        BlockMapBuild(irFunc.getEnd(),NewFunc);
+    //    BlockMapBuild(irFunc.getEnd(),NewFunc);
         BlockGen(irFunc.getStart(),NewFunc);
-        BlockGen(irFunc.getEnd(),NewFunc);
+     //   BlockGen(irFunc.getEnd(),NewFunc);
+        EndBlockAdjust(NewFunc,TrueEndBlock);
         NewFunc.BlocksCode = TransCode(NewFunc);
         NewFunc.BlocksCode = RegDistribute(NewFunc.BlocksCode);
         NewFunc.BlocksCode.add(0,Start);
@@ -279,6 +282,15 @@ public class CodeGenerator {
             NewBlocks.add(NewBlock);
         }
         return NewBlocks;
+    }
+    void EndBlockAdjust(FunctionSection Func,String EndBlock){
+            BlockSection EndSection = null;
+            for (int i = 0; i < Func.BlocksCode.size(); i++)
+                if (Objects.equals(Func.BlocksCode.get(i).IRBlockLabel,EndBlock)) {
+                    EndSection = Func.BlocksCode.get(i);
+                    Func.BlocksCode.remove(i);
+                }
+            Func.BlocksCode.add(EndSection);
     }
     Integer IRTypeToSize(String Type){
         return 4;
@@ -687,6 +699,7 @@ public class CodeGenerator {
             else if(Instr instanceof ReturnInstr){
                 //和call一样，需要交流
                 ReturnInstr NewIRRet = ( ReturnInstr)  Instr;
+                TrueEndBlock = irBlock.getLabel();
                 if(Objects.equals(NewIRRet.Type, "void")) break;
                 Integer VirRs = GetVirtualReg(NewIRRet.Rs);
                 PCode Move = new PCode(OpType.mv,VirA0,VirRs,InstrLine);
