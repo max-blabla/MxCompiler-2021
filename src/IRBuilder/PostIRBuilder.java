@@ -44,7 +44,7 @@ class ControlFlowGraphBuildPass{
     ControlFlowGraph CFG;
     IRFunc CurFunc;
     Queue<CFGNode> RenewQueue;
-    HashMap<String,BlockPhiIndex> BlockPhi;
+    HashMap<String,List<BlockPhiIndex>> BlockPhi;
     HashSet<IRBlock> Check;
     ControlFlowGraphBuildPass(IRFunc Func){
         CurFunc = Func;
@@ -94,12 +94,15 @@ class ControlFlowGraphBuildPass{
         for(IRBlock Sub : Block.SubBlocks) CFGNodeConnect(Sub,Graph);
     }
 
-    private void PhiGather(IRBlock irBlock,HashMap<String,BlockPhiIndex> PhiIndex){
+    private void PhiGather(IRBlock irBlock,HashMap<String,List<BlockPhiIndex>> PhiIndex){
         if(irBlock == null) return;
         for(BaseInstr Instr: irBlock.VarInstrList){
             if(Instr instanceof PhiInstr){
                 PhiInstr Phi = (PhiInstr) Instr;
-                for(int i = 0 ;i < Phi.PreBlock.size();i++) PhiIndex.put(Phi.PreBlock.get(i),new BlockPhiIndex(Phi,i));
+                for(int i = 0 ;i < Phi.PreBlock.size();i++) {
+                    if(PhiIndex.containsKey(Phi.PreBlock.get(i)))  PhiIndex.get(Phi.PreBlock.get(i)).add(new BlockPhiIndex(Phi,i));
+                    else PhiIndex.put(Phi.PreBlock.get(i),new ArrayList<>(List.of(new BlockPhiIndex(Phi, i))));
+                }
             }
         }
         for(IRBlock Sub : irBlock.getSubBlocks()) PhiGather(Sub,PhiIndex);
@@ -110,7 +113,7 @@ class ControlFlowGraphBuildPass{
     }
     private void PhiFuncGather(){
         if(CurFunc == null) return;
-        HashMap<String,BlockPhiIndex> IndexMap = new HashMap<>();
+        HashMap<String,List<BlockPhiIndex>> IndexMap = new HashMap<>();
         PhiGather(CurFunc.Start,IndexMap);
         PhiGather(CurFunc.End,IndexMap);
         BlockPhi = IndexMap;
@@ -136,8 +139,8 @@ class ControlFlowGraphBuildPass{
                 IRBlock CurBlock = CurNode.Block;
                 CFGNode SucNode = CurNode.Suc;
                 if(BlockPhi.containsKey(SucBlock.getLabel())){
-                    BlockPhiIndex PhiIndex = BlockPhi.get(SucBlock.getLabel());
-                    PhiIndex.PhiNode.PreBlock.set(PhiIndex.Index,CurBlock.Label);
+                    List<BlockPhiIndex> PhiIndexList = BlockPhi.get(SucBlock.getLabel());
+                    for(BlockPhiIndex PhiIndex : PhiIndexList) PhiIndex.PhiNode.PreBlock.set(PhiIndex.Index,CurBlock.Label);
                 }
                 SucNode.Block = null;
                 CurBlock.Serial = SucBlock.Serial;
