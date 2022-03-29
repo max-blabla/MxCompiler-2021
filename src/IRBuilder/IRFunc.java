@@ -69,7 +69,7 @@ public class IRFunc{
             for(IRBlock Sub : Top.SubBlocks) if(Sub != null) OutQueue.add(Sub);
             OutQueue.remove();
         }
-        if(End != null) End.Output(Writer);
+      //  if(End != null) End.Output(Writer);
         Writer.write("}\n");
     }
 
