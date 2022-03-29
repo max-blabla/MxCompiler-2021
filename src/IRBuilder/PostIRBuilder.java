@@ -167,12 +167,12 @@ class ControlFlowGraphBuildPass{
         if(CurFunc == null) return;
         CFGNode End = CFG.NodeTable.get(CurFunc.End.Label);
         CFGNode Start =CFG.NodeTable.get(CurFunc.Start.Label);
-        BlockRenew(Start,End);
+        BlockRenew(Start);
         CurFunc.Start = Start.Block;
         CurFunc.End = End.Block;
     }
 
-    private void BlockRenew(CFGNode CurNode,CFGNode End){
+    private void BlockRenew(CFGNode CurNode){
         RenewQueue  = new ArrayDeque<>();
         RenewQueue.add(CurNode);
         Check = new HashSet<>();
@@ -180,12 +180,12 @@ class ControlFlowGraphBuildPass{
         while(!RenewQueue.isEmpty()){
             CFGNode Top = RenewQueue.peek();
             Top.Block.SubBlocks = new ArrayList<>();
-            if(Top.Suc != null && !Check.contains(Top.Suc.Block) && Top.Suc != End){
+            if(Top.Suc != null && !Check.contains(Top.Suc.Block)){
                 Check.add(Top.Suc.Block);
                 Top.Block.InsertSubBlock(Top.Suc.Block);
                 RenewQueue.add(Top.Suc);
             }
-            if(Top.BrSuc != null && !Check.contains(Top.BrSuc.Block)&& Top.BrSuc != End){
+            if(Top.BrSuc != null && !Check.contains(Top.BrSuc.Block)){
                 Check.add(Top.BrSuc.Block);
                 Top.Block.InsertSubBlock(Top.BrSuc.Block);
                 RenewQueue.add(Top.BrSuc);
