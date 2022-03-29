@@ -600,12 +600,16 @@ class PhiNodeInsertionPass{
                 BaseInstr Instr = Iter.next();
                 if (Instr instanceof LoadInstr) {
                     LoadInstr Load = (LoadInstr) Instr;
-                    OperationInstr RsMove = new OperationInstr(InstrSeg.add, Load.Rd, IncomingVals.get(Load.RsPtr), "0", Load.RdType, "i32", InstrSeg.nullseg);
-                    Top.Block.VarInstrList.set(InstrList.indexOf(Instr), RsMove);
+                    if(IncomingVals.containsKey(Load.RsPtr)) {
+                        OperationInstr RsMove = new OperationInstr(InstrSeg.add, Load.Rd, IncomingVals.get(Load.RsPtr), "0", Load.RdType, "i32", InstrSeg.nullseg);
+                        Top.Block.VarInstrList.set(InstrList.indexOf(Instr), RsMove);
+                    }
                 } else if (Instr instanceof StoreInstr) {
                     StoreInstr Store = (StoreInstr) Instr;
-                    IncomingVals.replace(Store.Ptr, Store.Rs);
-                    Iter.remove();
+                    if(IncomingVals.containsKey(Store.Ptr)) {
+                        IncomingVals.replace(Store.Ptr, Store.Rs);
+                        Iter.remove();
+                    }
                 }
             }
 
