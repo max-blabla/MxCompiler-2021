@@ -43,7 +43,12 @@ public class PhiInstr extends  BaseInstr{
     public void Output(FileWriter Writer) throws IOException {
      //   Writer.write(Op+ ' ' + Mode + ' ' + RdType + " %" + Rd + '\n');
         Writer.write("%"+Rd + " =" + Op + ' ' + RdType);
-        for(int i = 0 ;i < PhiValue.size();i++) Writer.write('['+"%"+PhiValue.get(i)+", "+PreBlock.get(i)+']');
+        for(int i = 0 ;i < PhiValue.size();i++){
+            String Value = PhiValue.get(i);
+            if(IsImm.get(i))Writer.write('['+Value);
+            else Writer.write('['+"%"+Value);
+            Writer.write(", "+PreBlock.get(i)+']');
+        }
         Writer.write('\n');
     }
 }

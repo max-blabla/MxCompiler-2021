@@ -267,12 +267,12 @@ class AllocaInfo{
 class AloBuildSimplifyMemPass{
     ControlFlowGraph CFG;
     AllocaInfo AloInfo;
-    HashMap<String,String> GlobalPropogationMap;
+    //HashMap<String,String> GlobalPropogationMap;
     HashSet<String> IsReached;
     AloBuildSimplifyMemPass(ControlFlowGraph cfg){
         CFG = cfg;
         AloInfo = new AllocaInfo();;
-        GlobalPropogationMap = new HashMap<>();
+      //  GlobalPropogationMap = new HashMap<>();
         IsReached = new HashSet<>();
     }
     void Run(){
@@ -357,7 +357,6 @@ class AloBuildSimplifyMemPass{
         List<BaseInstr> InstrList = StartNode.Block.VarInstrList;
         Iterator<BaseInstr> Iter = InstrList.listIterator();
         HashMap<String,String> LocalPropogationMap = new HashMap<>();
-        HashSet<String> NewPropogationMapKey = new HashSet<>();
         HashSet<BaseInstr> UnUsedDef = new HashSet<>();
         HashMap<String,BaseInstr> PreStore = new HashMap<>();
         while(Iter.hasNext()){
@@ -367,14 +366,7 @@ class AloBuildSimplifyMemPass{
                 String Ptr = Store.Ptr;
                 String Rs = Store.Rs;
                 if(AloInfo.AllocaPacks.containsKey(Ptr)){
-                    PromotionAlloca AllocProPack = AloInfo.AllocaPacks.get(Ptr);
-                    if(AllocProPack.DefCnt == 1){
-                        GlobalPropogationMap.put(Ptr,Rs);
-                        NewPropogationMapKey.add(Ptr);
-                        --AllocProPack.DefCnt;
-                        Iter.remove();
-                    }
-                    else{
+
                         if(!PreStore.containsKey(Ptr)) PreStore.put(Ptr,Instr);
                         else{
                             UnUsedDef.add(PreStore.get(Ptr));
@@ -383,7 +375,6 @@ class AloBuildSimplifyMemPass{
                         LocalPropogationMap.put(Ptr,Rs);
                     }
 
-                }
             }
             else if(Instr instanceof LoadInstr){
                 LoadInstr Load = (LoadInstr) Instr;
@@ -393,11 +384,6 @@ class AloBuildSimplifyMemPass{
                     int LoadIndex = InstrList.indexOf(Load);
                     if(LocalPropogationMap.containsKey(Ptr)) {
                         OperationInstr RsMove = new OperationInstr(InstrSeg.add, Load.Rd, LocalPropogationMap.get(Ptr), "0", Load.RdType, "i32", InstrSeg.nullseg);
-                        InstrList.set(LoadIndex,RsMove);
-                        --AllocProPack.UseCnt;
-                    }
-                    else if(GlobalPropogationMap.containsKey(Ptr)){
-                        OperationInstr RsMove = new OperationInstr(InstrSeg.add, Load.Rd, GlobalPropogationMap.get(Ptr), "0", Load.RdType, "i32", InstrSeg.nullseg);
                         InstrList.set(LoadIndex,RsMove);
                         --AllocProPack.UseCnt;
                     }
@@ -411,7 +397,6 @@ class AloBuildSimplifyMemPass{
         }
         MemPropogation(StartNode.Suc);
         MemPropogation(StartNode.BrSuc);
-        for(String Key : NewPropogationMapKey) GlobalPropogationMap.remove(Key);
     }
 
     void ConfigureUse(CFGNode CurNode){
@@ -447,22 +432,27 @@ class DominancePass{
     HashSet<String> IsProcessed;
     HashMap<String,Integer> FingerTable;
     DominanceFrontier DomFron;
-    private  void ConfigureDominanceFrontier(){
-        for(RePostOrderPassNode Node:Info.ReDfsPostOrder) {
-            DomFron.FrontierSet.put(Node.BlockName,new ArrayList<>());
+    private  void ConfigureDominanceFrontier() {
+        for (RePostOrderPassNode Node : Info.ReDfsPostOrder) {
+            DomFron.FrontierSet.put(Node.BlockName, new ArrayList<>());
         }
         RePostOrderPassNode Runner;
-        for(int i = Info.ReDfsPostOrder.size()-1;i>=0;i--){
+        for (int i = Info.ReDfsPostOrder.size() - 1; i >= 0; i--) {
             RePostOrderPassNode Node = Info.ReDfsPostOrder.get(i);
-            if(Node.Predecessors.size() >= 2){
-                for(String Pres:Node.Predecessors){
+            if (Node.Predecessors.size() >= 2) {
+                for (String Pres : Node.Predecessors) {
                     Runner = Info.RePostOrderNodeNameMap.get(Pres);
-                    while(Runner != Doms.get(Node.BlockName)){
+                    while (Runner != Doms.get(Node.BlockName)) {
                         DomFron.FrontierSet.get(Runner.BlockName).add(Node);
                         Runner = Doms.get(Runner.BlockName);
                     }
                 }
             }
+        }
+        for(Entry<String,List<RePostOrderPassNode>> e : DomFron.FrontierSet.entrySet()){
+            System.out.print(e.getKey()+":");
+            for(RePostOrderPassNode Node : e.getValue()) System.out.print(Node.BlockName+" ");
+            System.out.print('\n');
         }
     }
     DominancePass(RePostOrderDfsInfo info){
@@ -599,6 +589,7 @@ class PhiNodeInsertionPass{
         IsVistsed.add(CurNode.Block.Label);
         Iterator<BaseInstr> Iter = CurNode.Block.VarInstrList.listIterator();
         List<String> Defs = new ArrayList<>();
+        List<String> Phis = new ArrayList<>();
         while (Iter.hasNext()) {
             BaseInstr Instr = Iter.next();
             if (Instr instanceof LoadInstr) {
@@ -616,25 +607,29 @@ class PhiNodeInsertionPass{
                 }
             }
         }
-            System.out.println(CurNode.Block.getLabel());
+         //   System.out.println(CurNode.Block.getLabel());
             if (CurNode.Suc != null) {
                 PhiInsertionInfo SucPhis = PhiInsertion.get(CurNode.Suc.Block.Label);
                 if (SucPhis != null) for (Entry<String, PhiInstr> e : SucPhis.BlockPhi.entrySet()) {
-                    e.getValue().NewPhiArg(CurNode.Block.Label, IncomingVals.get(e.getKey()).peek(), false);
+                    String Value = IncomingVals.get(e.getKey()).peek();
+                    e.getValue().NewPhiArg(CurNode.Block.Label, Value, Value.equals("0"));
                     IncomingVals.get(e.getKey()).push(e.getValue().Rd);
-                    Defs.add(e.getKey());
+                    Phis.add(e.getKey());
                 }
                 CompletePhiNodeDfs(CurNode.Suc);
+                for (String Str : Phis) IncomingVals.get(Str).pop();
             }
+            Phis = new ArrayList<>();
             if (CurNode.BrSuc != null) {
                 PhiInsertionInfo SucPhis = PhiInsertion.get(CurNode.BrSuc.Block.Label);
                 if (SucPhis != null) for (Entry<String, PhiInstr> e : SucPhis.BlockPhi.entrySet()) {
-                    e.getValue().NewPhiArg(CurNode.Block.Label, IncomingVals.get(e.getKey()).peek(), false);
+                    String Value = IncomingVals.get(e.getKey()).peek();
+                    e.getValue().NewPhiArg(CurNode.Block.Label, Value, Value.equals("0"));
                     IncomingVals.get(e.getKey()).push(e.getValue().Rd);
-                    Defs.add(e.getKey());
-
+                    Phis.add(e.getKey());
                 }
                 CompletePhiNodeDfs(CurNode.BrSuc);
+                for (String Str : Phis) IncomingVals.get(Str).pop();
             }
             for (String Str : Defs) IncomingVals.get(Str).pop();
 
