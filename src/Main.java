@@ -4,7 +4,7 @@
 import ASTNode.ErrorInfo;
 import ASTNode.GlobalAST;
 import ASTNode.SemanticChecker;
-import CodeGenerator.CodeGenerator;
+import CodeGenerator.*;
 import IRBuilder.IRBuilder;
 import MxParser.MxParser;
 import PostASTBuilder.PostASTBuilder;
@@ -23,18 +23,15 @@ import IRBuilder.PostIRBuilder;
 public class Main {
     public static void main(String args[]) {
             try {
-                String InputFile;
-             //   InputFile = "./Compiler-2021-testcases/codegen/e" + 1 + ".mx";
-                    String IROutputFile = "./src/IROutput/test.ll";
+         //       for(int i = 66 ; i <= 69 ;i ++){
+          //      System.out.println(i);
+          //      String InputFile = "./Compiler-2021-testcases/codegen/t" + i + ".mx";
+                String IROutputFile = "./src/IROutput/test.ll";
                 String OptIROutputFile = "./src/IROutput/Opttest.ll";
-
-                //                String CGOutputFile = "./src/CGOutput/test.s";
-                    //  String CGOutputFile = "D://Coding/ravel-master/build/test.s";
-                        String CGOutputFile = "output.s";
+            //    String CGOutputFile = "./src/CGOutput/test.s";
+                    String CGOutputFile = "output.s";
                        InputStream is = System.in;
             //        InputStream is = new FileInputStream(InputFile);
-
-                  //  ANTLRInputStream input = new ANTLRInputStream(is);
                     ANTLRInputStream input = new ANTLRInputStream(is);
                     MxLexer lexer = new MxLexer(input);
                     CommonTokenStream tokens = new CommonTokenStream(lexer);
@@ -59,17 +56,13 @@ public class Main {
                     IR.FileRun(IROutputFile);
                 PostIRBuilder PostIrBuilder = new PostIRBuilder();
                 PostIrBuilder.setModuleList(IR.GetModuleList());
-                PostIrBuilder.StartOpt(2);
-                //   PostIrBuilder.BlockMerging();
-                //PostIrBuilder.RemoveRedundant();
+                PostIrBuilder.StartOpt(1);
                 IR.FileRun(OptIROutputFile);
-                    CodeGenerator CodeGen = new CodeGenerator();
-                    CodeGen.setIRInit(IR.GetModuleList(),IR.getConstStrs());
-                    CodeGen.CodeGenerate();
-                    PrintStream Os = new PrintStream(CGOutputFile);
-                    CodeGen.CodeOutput(Os);
+                CodeGeneratorColoring CG = new CodeGeneratorColoring(IR.GetModuleList(),IR.getConstStrs());
+                CG.Run();
+                CG.Output(CGOutputFile,2);
                     is.close();
-       //         }
+            //    }
             } catch (java.io.IOException E) {
                 System.out.print("Input Error");
             }  catch (ErrorInfo E){
