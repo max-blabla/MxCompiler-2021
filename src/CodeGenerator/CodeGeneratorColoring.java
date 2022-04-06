@@ -68,6 +68,7 @@ class GraphColoringPass{
 
     ArrayList<BlockSection> Blocks;
 
+    IRFunc CurFunc;
     HashMap<String,RegType> PreColorTable;
     List<RegType> StaticOKColors;
     HashMap<String,HashSet<Integer>> BlocksLiveOut;
@@ -81,10 +82,11 @@ class GraphColoringPass{
     ControlFlowGraph CFG;
     Integer VirZero;
     Integer ColorUsed;
-    GraphColoringPass(FuncCodeInfo FCI,FunctionSection funcSec,ControlFlowGraph cfg){
+    GraphColoringPass(FuncCodeInfo FCI,FunctionSection funcSec,ControlFlowGraph cfg,IRFunc irFunc){
         MedianTempNum = 0;
         FuncSec = funcSec;
         CFG  = cfg;
+        CurFunc = irFunc;
         AllocaNum = FCI.AllocaNum;
         VirNameHashTable = FCI.VirNameHashTable;
         StackStorage = FCI.VirStackStorage;
@@ -298,6 +300,27 @@ class GraphColoringPass{
             }
             NewBlocks.add(NewBlock);
         }
+        List<Param> ParamList = CurFunc.getParamList();
+        int j = 0 ;
+        BlockSection NewStartBlock =  new BlockSection("","");
+        for(Param param : ParamList){
+            Integer VirParamHash = VirNameHashTable.get("param"+j);
+            if(j<8){
+                PCode ParamMv = new PCode(OpType.mv,-3,-3,Color.get(VirNameHashTable.get(param.getName())),Color.get(VirParamHash),-3);
+                NewStartBlock.CodeList.add(0,ParamMv);
+            }
+            else{
+                SCode ParamS = new SCode(OpType.sw,-3,-3,Color.get(VirNameHashTable.get(param.getName())),RegType.sp,Integer.toString((ParamList.size()-j)*4),-2);
+                NewStartBlock.CodeList.add(0,ParamS);
+            }
+            ++j;
+        }
+        String Next = NewBlocks.get(0).BlockLable;
+        JCode Jump = new JCode(OpType.j,Next,0);
+        NewStartBlock.CodeList.add(Jump);
+        NewBlocks.add(0,NewStartBlock);
+
+
         MCode Ret = new MCode(OpType.ret,0);
         UCode DLi = new UCode(OpType.ili,-3,RegType.t0,"-"+StackSize,0);
         RCode SpDown = new RCode(OpType.add,-3,-3,-3,RegType.sp,RegType.sp,RegType.t0,0);
@@ -1076,7 +1099,7 @@ public class CodeGeneratorColoring{
         for(Entry<FunctionSection,IRFunc> fE : FuncEntry.entrySet()){
             ControlFlowGraphBuildPass CFGBP = new ControlFlowGraphBuildPass(fE.getKey(),fE.getValue());
             ControlFlowGraph CFG = CFGBP.CFGBuild();
-            GraphColoringPass GCP = new GraphColoringPass(GlobalInfo.FuncCodeInfos.get(fE.getKey().FuncName),fE.getKey(),CFG);
+            GraphColoringPass GCP = new GraphColoringPass(GlobalInfo.FuncCodeInfos.get(fE.getKey().FuncName),fE.getKey(),CFG,fE.getValue());
             GCP.Run();
         }
     }
@@ -1255,27 +1278,18 @@ class IrTranslationPass{
 
 
     void TranSection(FunctionSection Func,IRFunc irFunc){
-        List<Param> ParamList = irFunc.getParamList();
-        int i = 0 ;
         CurFuncInfo.PreColoredSet.add(VirNameHash(VirT0));
         CurFuncInfo.PreColoredSet.add(VirNameHash(VirT1));
         CurFuncInfo.PreColoredSet.add(VirNameHash(VirZero));
         CurFuncInfo.PreColoredSet.add(VirNameHash(VirRet));
-        BlockSection Blocks =  new BlockSection("","");
+
+        List<Param> ParamList = irFunc.getParamList();
+        int j = 0 ;
         for(Param param : ParamList){
-            Integer VirParamHash = VirNameHash(VirParam+i);
-            if(i<8){
-                PCode ParamMv = new PCode(OpType.mv,VirNameHash(param.getName()),VirParamHash,RegType.NULL,RegType.NULL,-2);
-                Blocks.CodeList.add(0,ParamMv);
-            }
-            else{
-                SCode ParamS = new SCode(OpType.sw,VirNameHash(param.getName()),VirNameHash(VirSp),RegType.NULL,RegType.NULL,Integer.toString((ParamList.size()-i)*4),-2);
-                Blocks.CodeList.add(0,ParamS);
-            }
-            ++i;
+            Integer VirParamHash = VirNameHash("param"+j);
+            ++j;
             CurFuncInfo.PreColoredSet.add(VirParamHash);
         }
-        Func.BlocksCode.add(0,Blocks);
         if(EndBlock != null){
             Func.BlocksCode.remove(EndBlock);
             Func.BlocksCode.add(EndBlock);
