@@ -690,9 +690,15 @@ class GraphColoringPass{
         for(Integer v :SpilledNodes){
             Integer StackPos = ++AllocaNum;
             StackStorage.put(v,StackPos);
-            LocalTempMap.put(v,VirNameHashTable.size());
-            NewTemps.add(VirNameHashTable.size());
-            VirNameHashTable.put(MedianTemp+v,VirNameHashTable.size());
+            Integer NewVir = VirNameHashTable.size();
+            LocalTempMap.put(v,NewVir);
+            NewTemps.add(NewVir);
+            VirNameHashTable.put(MedianTemp+v,NewVir);
+            Degree.put(NewVir,0);
+            AdjList.put(NewVir,new ArrayList<>());
+            Initial.add(NewVir);
+            MoveList.put(NewVir,new HashSet<>());
+            Alias.put(NewVir,NewVir);
         }
         ArrayList<BlockSection> NewBlocks = new ArrayList<>();
         for(BlockSection BlockSec :Blocks){
