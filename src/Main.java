@@ -23,54 +23,56 @@ import IRBuilder.PostIRBuilder;
 public class Main {
     public static void main(String args[]) {
             try {
-         //       for(int i = 66 ; i <= 69 ;i ++){
-          //      System.out.println(i);
-          //      String InputFile = "./Compiler-2021-testcases/codegen/t" + i + ".mx";
+                //       for(int i = 66 ; i <= 69 ;i ++){
+                //      System.out.println(i);
+                //      String InputFile = "./Compiler-2021-testcases/codegen/t" + i + ".mx";
                 String IROutputFile = "./src/IROutput/test.ll";
                 String OptIROutputFile = "./src/IROutput/Opttest.ll";
-            //    String CGOutputFile = "./src/CGOutput/test.s";
-                    String CGOutputFile = "output.s";
-                       InputStream is = System.in;
-            //        InputStream is = new FileInputStream(InputFile);
+                //    String CGOutputFile = "./src/CGOutput/test.s";
+                String CGOutputFile = "output.s";
+                InputStream is = System.in;
+                //        InputStream is = new FileInputStream(InputFile);
                 boolean IsSema = false;
-                for(String arg : args) {
+                for (String arg : args) {
                     if (arg.equals("sema")) {
                         IsSema = true;
                         break;
                     }
                 }
-                    ANTLRInputStream input = new ANTLRInputStream(is);
-                    MxLexer lexer = new MxLexer(input);
-                    CommonTokenStream tokens = new CommonTokenStream(lexer);
-                    MxParser parser = new MxParser(tokens);
-                    ParseTree tree = parser.program();
+                ANTLRInputStream input = new ANTLRInputStream(is);
+                MxLexer lexer = new MxLexer(input);
+                CommonTokenStream tokens = new CommonTokenStream(lexer);
+                MxParser parser = new MxParser(tokens);
+                ParseTree tree = parser.program();
 
-                    if(!IsSema) {
-                        ParseTreeWalker walker = new ParseTreeWalker();
-                        ASTBuilder AstBuilder = new ASTBuilder();
-                        walker.walk(AstBuilder, tree);
-                        SemanticChecker SC = new SemanticChecker();
-                        SC.SetProgram(AstBuilder.getGlobalAST());
-                        SC.SemanticCheck();
-                        if (SC.HasLambda()) return;
+                if (parser.getNumberOfSyntaxErrors() != 0) throw new RuntimeException();
+                ParseTreeWalker walker = new ParseTreeWalker();
+                ASTBuilder AstBuilder = new ASTBuilder();
+                walker.walk(AstBuilder, tree);
 
-                        PostASTBuilder PostAstBuilder = new PostASTBuilder();
-                        PostAstBuilder.SetProgram(AstBuilder.getGlobalAST());
-                        PostAstBuilder.ConstSpread();
-                        GlobalAST Program = PostAstBuilder.GetProgram();
-                        IRBuilder IR = new IRBuilder();
-                        IR.RunIR(Program);
-                        IR.FileRun(IROutputFile);
-                        PostIRBuilder PostIrBuilder = new PostIRBuilder();
-                        PostIrBuilder.setModuleList(IR.GetModuleList());
-                        PostIrBuilder.StartOpt(1);
-                        IR.FileRun(OptIROutputFile);
-                        CodeGeneratorColoring CG = new CodeGeneratorColoring(IR.GetModuleList(), IR.getConstStrs());
-                        CG.Run();
-                        CG.Output(CGOutputFile, 2);
-                    }
-                    is.close();
-            //    }
+                SemanticChecker SC = new SemanticChecker();
+                SC.SetProgram(AstBuilder.getGlobalAST());
+                SC.SemanticCheck();
+                if (SC.HasLambda()) return;
+
+                if (!IsSema) {
+                    PostASTBuilder PostAstBuilder = new PostASTBuilder();
+                    PostAstBuilder.SetProgram(AstBuilder.getGlobalAST());
+                    PostAstBuilder.ConstSpread();
+                    GlobalAST Program = PostAstBuilder.GetProgram();
+                    IRBuilder IR = new IRBuilder();
+                    IR.RunIR(Program);
+                    IR.FileRun(IROutputFile);
+                    PostIRBuilder PostIrBuilder = new PostIRBuilder();
+                    PostIrBuilder.setModuleList(IR.GetModuleList());
+                    PostIrBuilder.StartOpt(1);
+                    IR.FileRun(OptIROutputFile);
+                    CodeGeneratorColoring CG = new CodeGeneratorColoring(IR.GetModuleList(), IR.getConstStrs());
+                    CG.Run();
+                    CG.Output(CGOutputFile, 2);
+                }
+                is.close();
+                //    }
             } catch (java.io.IOException E) {
                 System.out.print("Input Error");
             }  catch (ErrorInfo E){
