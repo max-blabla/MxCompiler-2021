@@ -25,8 +25,16 @@ public class BlockSection {
     }
 
 
-    public void Output(PrintStream Stream){
+    public void Output(PrintStream Stream,Integer Mode){
         if(!Objects.equals(BlockLable, "")) Stream.println(BlockLable+":" + "\t\t\t #" +IRBlockLabel);
-        for(BaseCode Code : CodeList) Code.Output(Stream);
+        if(Mode == 1)  for(BaseCode Code : CodeList) Code.VirOutput(Stream);
+        else if(Mode == 2) for(BaseCode Code : CodeList) Code.Output(Stream);
+        else if(Mode == 3){
+            for(BaseCode Code : CodeList){
+                Stream.print("#");
+                Code.VirOutput(Stream);
+                Code.Output(Stream);
+            }
+        }
     }
 }

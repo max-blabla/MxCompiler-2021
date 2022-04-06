@@ -35,4 +35,11 @@ public class LCode extends BaseCode{
         OutputLine(Stream);
         Stream.print("\n");
     }
+
+    @Override
+    public void VirOutput(PrintStream Stream) {
+        Stream.print("\t"+Op + " " + VirRd + " ," +Imm  + "("+VirRs+")");
+        OutputLine(Stream);
+        Stream.print("\n");
+    }
 }

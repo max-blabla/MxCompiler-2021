@@ -33,4 +33,11 @@ public class RCode extends BaseCode{
         OutputLine(Stream);
         Stream.print("\n");
     }
+
+    @Override
+    public void VirOutput(PrintStream Stream) {
+        Stream.print("\t"+Op + " " + VirRd + " ," + VirRs1 + " ," + VirRs2 );
+        OutputLine(Stream);
+        Stream.print("\n");
+    }
 }

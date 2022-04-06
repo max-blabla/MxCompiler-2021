@@ -30,4 +30,11 @@ public class SCode extends BaseCode{
         OutputLine(Stream);
         Stream.print("\n");
     }
+
+    @Override
+    public void VirOutput(PrintStream Stream) {
+        Stream.print("\t"+Op + " " + VirRs1 + " ," +Imm  + "("+VirRs2+")");
+        OutputLine(Stream);
+        Stream.print("\n");
+    }
 }

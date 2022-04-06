@@ -73,7 +73,7 @@ public class CodeGenerator {
     // a2-7 12-17
     // s2-11 18-27
     // t3-6 28-31
-
+/*
     public void setIRInit(List<IRModule> moduleList,HashMap<String,String> constStr ) {
         ModuleList = moduleList;
         ConstStr = constStr;
@@ -722,4 +722,5 @@ public class CodeGenerator {
         func.BlocksCode.add(NewBlockCode);
         for(IRBlock Son :irBlock.getSubBlocks()) BlockGen(Son,func);
     }
+ */
 }

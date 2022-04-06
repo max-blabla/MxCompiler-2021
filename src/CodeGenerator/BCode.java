@@ -30,4 +30,11 @@ public class BCode extends BaseCode{
         OutputLine(Stream);
         Stream.print("\n");
     }
+
+    @Override
+    public void VirOutput(PrintStream Stream){
+        Stream.print("\t"+Op + " " + VirRs1 + " ," + VirRs2 + " ," + Block);
+        OutputLine(Stream);
+        Stream.print("\n");
+    }
 }

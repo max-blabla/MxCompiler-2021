@@ -8,11 +8,13 @@ public class PCode extends BaseCode{
     RegType Rs;
     Integer VirRs;
     Integer VirRd;
-    PCode(OpType op, Integer virRd, Integer virRs,Integer Line){
+    PCode(OpType op, Integer virRd, Integer virRs,RegType rd,RegType rs,Integer Line){
         super(CodeType.PType,Line);
         Op = op;
         VirRs  = virRs;
         VirRd = virRd;
+        Rd = rd;
+        Rs = rs;
     }
 
     void SetTrue(Triple tr){
@@ -22,6 +24,17 @@ public class PCode extends BaseCode{
 
     @Override
     public void Output(PrintStream Stream) {
-        Stream.println("\t"+Op+" "+Rd+" ,"+Rs);
+
+        Stream.print("\t"+Op+" "+Rd+" ,"+Rs);
+        OutputLine(Stream);
+        Stream.println();
+    }
+
+    @Override
+    public void VirOutput(PrintStream Stream) {
+        Stream.print("\t"+Op+" "+VirRd+" ,"+VirRs);
+        OutputLine(Stream);
+        Stream.println();
+
     }
 }

@@ -24,4 +24,11 @@ public class BPCode extends BaseCode{
         OutputLine(Stream);
         Stream.print("\n");
     }
+
+    @Override
+    public void VirOutput(PrintStream Stream) {
+        Stream.print("\t"+Op + " "+ VirRs + " ," + Label);
+        OutputLine(Stream);
+        Stream.print("\n");
+    }
 }

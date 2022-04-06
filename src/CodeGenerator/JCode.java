@@ -17,4 +17,11 @@ public class JCode extends BaseCode{
         OutputLine(Stream);
         Stream.print("\n");
     }
+
+    @Override
+    public void VirOutput(PrintStream Stream) {
+        Stream.print("\t"+ Op + " " + Block);
+        OutputLine(Stream);
+        Stream.print("\n");
+    }
 }

@@ -25,4 +25,11 @@ public class UCode extends BaseCode{
         OutputLine(Stream);
         Stream.print("\n");
     }
+
+    @Override
+    public void VirOutput(PrintStream Stream) {
+        Stream.print("\t"+Op + " " + VirRd + " ," + Imm);
+        OutputLine(Stream);
+        Stream.print("\n");
+    }
 }

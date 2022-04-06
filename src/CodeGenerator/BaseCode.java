@@ -10,6 +10,7 @@ public abstract class BaseCode {
         Line = line;
     }
     public abstract void Output(PrintStream Stream);
+    public abstract void VirOutput(PrintStream Stream);
     void OutputLine(PrintStream Stream){
         if(Line != 0 ) Stream.print("\t\t"+"#"+Line);
     }
