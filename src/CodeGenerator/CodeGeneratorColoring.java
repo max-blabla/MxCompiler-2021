@@ -81,6 +81,7 @@ class GraphColoringPass{
     FunctionSection FuncSec;
     ControlFlowGraph CFG;
     Integer VirZero;
+    Integer RewriteCnt;
     Integer ColorUsed;
     GraphColoringPass(FuncCodeInfo FCI,FunctionSection funcSec,ControlFlowGraph cfg,IRFunc irFunc){
         MedianTempNum = 0;
@@ -143,6 +144,7 @@ class GraphColoringPass{
         MoveList = new HashMap<>();
     }
     void Init(){
+        RewriteCnt = 0;
         System.out.println("All VirReg:");
         for(Entry<String,Integer> entry:VirNameHashTable.entrySet()){
             Degree.put(entry.getValue(),0);
@@ -300,34 +302,18 @@ class GraphColoringPass{
             }
             NewBlocks.add(NewBlock);
         }
-        List<Param> ParamList = CurFunc.getParamList();
-        int j = 0 ;
         BlockSection NewStartBlock =  new BlockSection("","");
-        for(Param param : ParamList){
-            Integer VirParamHash = VirNameHashTable.get("param"+j);
-            if(j<8){
-                PCode ParamMv = new PCode(OpType.mv,-3,-3,Color.get(VirNameHashTable.get(param.getName())),Color.get(VirParamHash),-3);
-                NewStartBlock.CodeList.add(0,ParamMv);
-            }
-            else{
-                SCode ParamS = new SCode(OpType.sw,-3,-3,Color.get(VirNameHashTable.get(param.getName())),RegType.sp,Integer.toString((ParamList.size()-j)*4),-2);
-                NewStartBlock.CodeList.add(0,ParamS);
-            }
-            ++j;
-        }
+
         String Next = NewBlocks.get(0).BlockLable;
         JCode Jump = new JCode(OpType.j,Next,0);
-        NewStartBlock.CodeList.add(Jump);
         NewBlocks.add(0,NewStartBlock);
-
-
         MCode Ret = new MCode(OpType.ret,0);
         UCode DLi = new UCode(OpType.ili,-3,RegType.t0,"-"+StackSize,0);
         RCode SpDown = new RCode(OpType.add,-3,-3,-3,RegType.sp,RegType.sp,RegType.t0,0);
         UCode RaILi = new UCode(OpType.ali,-3,RegType.t0,Integer.toString(StackSize-4),0);
         SCode RaIn = new SCode(OpType.sw,-3,-3,RegType.ra,RegType.t0,StrZero,0);
         UCode RaOLi = new UCode(OpType.ali,-3,RegType.t0,Integer.toString(StackSize-4),0);
-        LCode RaOut = new LCode(OpType.sw,-3,-3,RegType.ra,RegType.t0,StrZero,0);
+        LCode RaOut = new LCode(OpType.lw,-3,-3,RegType.ra,RegType.t0,StrZero,0);
         UCode ULi = new UCode(OpType.ili,-3,RegType.t0, Integer.toString(StackSize),0);
         RCode SpUp = new RCode(OpType.add,-3,-3,-3,RegType.sp,RegType.sp,RegType.t0,0);
         BlockSection End = NewBlocks.get(NewBlocks.size()-1);
@@ -340,12 +326,28 @@ class GraphColoringPass{
             UCode SIILi = new UCode(OpType.ali,-3,RegType.t0,Integer.toString(StackSize-4*(i+2)),0);
             SCode SIIn = new SCode(OpType.sw,-3,-3,StaticOKColors.get(i),RegType.t0,StrZero,0);
             UCode SIOLi = new UCode(OpType.ali,-3,RegType.t0,Integer.toString(StackSize-4*(i+2)),0);
-            LCode SIOut = new LCode(OpType.sw,-3,-3,StaticOKColors.get(i),RegType.t0,StrZero,0);
+            LCode SIOut = new LCode(OpType.lw,-3,-3,StaticOKColors.get(i),RegType.t0,StrZero,0);
             Start.CodeList.add(SIILi);
             Start.CodeList.add(SIIn);
             End.CodeList.add(SIOLi);
             End.CodeList.add(SIOut);
         }
+        List<Param> ParamList = CurFunc.getParamList();
+        int j = 0 ;
+        for(Param param : ParamList){
+            Integer VirParamHash = VirNameHashTable.get(".param"+j);
+            if(j<8){
+                PCode ParamMv = new PCode(OpType.mv,-3,-3,Color.get(VirNameHashTable.get(param.getName())),Color.get(VirParamHash),-3);
+                NewStartBlock.CodeList.add(ParamMv);
+            }
+            else{
+                SCode ParamS = new SCode(OpType.sw,-3,-3,Color.get(VirNameHashTable.get(param.getName())),RegType.sp,Integer.toString(StackSize+(ParamList.size()-j)*4),-2);
+                NewStartBlock.CodeList.add(ParamS);
+            }
+            ++j;
+        }
+        NewStartBlock.CodeList.add(Jump);
+
         End.CodeList.add(RaOLi);
         End.CodeList.add(RaOut);
         End.CodeList.add(ULi);
@@ -366,7 +368,7 @@ class GraphColoringPass{
             else if(!FreezeWorklist.isEmpty()) Freeze();
             else if(!SpillWorklist.isEmpty()) SelectSpill();
         }while(!SimplifyWorklist.isEmpty() || !WorklistMoves.isEmpty() || !FreezeWorklist.isEmpty() || !SpillWorklist.isEmpty());
-        AdjSet.ShowMatrix();
+    //    AdjSet.ShowMatrix();
         AssignColors();
         if(!SpilledNodes.isEmpty()){
             RewriteProgram();
@@ -454,7 +456,7 @@ class GraphColoringPass{
                 live.addAll(Uses);
             }
         }
-        AdjSet.ShowMatrix();
+    //    AdjSet.ShowMatrix();
     }
 
     Boolean IsMoveInstruction(BaseCode Code) {
@@ -685,6 +687,8 @@ class GraphColoringPass{
     }
 
     void RewriteProgram(){
+        ++RewriteCnt;
+        System.out.println("Rewrite"+RewriteCnt);
         HashSet<Integer> NewTemps = new HashSet<>();
         HashMap<Integer,Integer> LocalTempMap =new HashMap<>();
         for(Integer v :SpilledNodes){
@@ -702,8 +706,8 @@ class GraphColoringPass{
         }
         ArrayList<BlockSection> NewBlocks = new ArrayList<>();
         for(BlockSection BlockSec :Blocks){
+            BlockSection NewBlock = new BlockSection(BlockSec.BlockLable,BlockSec.IRBlockLabel);
             for(BaseCode Code: BlockSec.CodeList){
-                BlockSection NewBlock = new BlockSection(BlockSec.BlockLable,BlockSec.IRBlockLabel);
                 if(Code instanceof LCode){
                     LCode L = (LCode) Code;
                     if(SpilledNodes.contains(L.VirRs)){
@@ -839,8 +843,8 @@ class GraphColoringPass{
                     NewBlock.CodeList.add(BP);
                 }
                 else NewBlock.CodeList.add(Code);
-                NewBlocks.add(NewBlock);
             }
+            NewBlocks.add(NewBlock);
         }
         Blocks = NewBlocks;
         SpilledNodes = new HashSet<>();
@@ -1105,7 +1109,7 @@ public class CodeGeneratorColoring{
         for(Entry<FunctionSection,IRFunc> fE : FuncEntry.entrySet()){
             ControlFlowGraphBuildPass CFGBP = new ControlFlowGraphBuildPass(fE.getKey(),fE.getValue());
             ControlFlowGraph CFG = CFGBP.CFGBuild();
-            GraphColoringPass GCP = new GraphColoringPass(GlobalInfo.FuncCodeInfos.get(fE.getKey().FuncName),fE.getKey(),CFG,fE.getValue());
+            GraphColoringPass GCP = new GraphColoringPass(GlobalInfo.FuncCodeInfos.get(fE.getValue().getFuncName()),fE.getKey(),CFG,fE.getValue());
             GCP.Run();
         }
     }
@@ -1155,7 +1159,7 @@ class IrTranslationPass{
     HashMap<String,String> IrToClang;
     HashMap<InstrSeg,OpType> OpTranslation;
     GlobalCodeInfo GlobalCode;
-
+    HashSet<IRBlock> IsGenerated;
     //函数
     FuncCodeInfo CurFuncInfo;
     HashMap<String,PhiInstr> PhiSet;
@@ -1176,7 +1180,7 @@ class IrTranslationPass{
     String Gptr = "%gptr";
     String Sptr = "%sptr";
     String Hi = "%hi";
-    String Lo = "lo";
+    String Lo = "%lo";
     String VirParam = ".param";
     String VirRet = ".return";
     String Void = "void";
@@ -1190,6 +1194,7 @@ class IrTranslationPass{
     char RightPar = ')';
     IrTranslationPass(List<IRModule> moduleList,HashMap<String,String> constStr,HashMap<FunctionSection,IRFunc> funcEntry){
         ModuleList = moduleList;
+        IsGenerated = new HashSet<>();
         GlobalCode = new GlobalCodeInfo(constStr,funcEntry);
     }
     void Run(){
@@ -1253,7 +1258,9 @@ class IrTranslationPass{
         if(Func.getLinked()) return;
         CurFuncInfo = FuncInfo;
         FuncInit();
-        FunctionSection NewFuncSec = new FunctionSection(Func.getFuncName());
+        FunctionSection NewFuncSec;
+        if(!Objects.equals(Func.getFuncName(), "_global.main")) NewFuncSec= new FunctionSection(Func.getFuncName());
+        else  NewFuncSec= new FunctionSection("main");
         BlockGen(Func.getStart(),NewFuncSec);
         PhiInsert();
         TranSection(NewFuncSec,Func);
@@ -1292,7 +1299,7 @@ class IrTranslationPass{
         List<Param> ParamList = irFunc.getParamList();
         int j = 0 ;
         for(Param param : ParamList){
-            Integer VirParamHash = VirNameHash("param"+j);
+            Integer VirParamHash = VirNameHash(VirParam+j);
             ++j;
             CurFuncInfo.PreColoredSet.add(VirParamHash);
         }
@@ -1390,6 +1397,8 @@ class IrTranslationPass{
 
     void BlockGen(IRBlock CurBlock,FunctionSection FuncSec){
         if(CurBlock == null) return;
+        if(IsGenerated.contains(CurBlock)) return;
+        IsGenerated.add(CurBlock);
         String IrLabel = CurBlock.getLabel();
         BlockSection NewBlock = new BlockSection(LabelToClang(IrLabel),IrLabel);
         CurFuncInfo.BlockSectionMap.put(CurBlock.getLabel(),NewBlock);
@@ -1403,7 +1412,7 @@ class IrTranslationPass{
                 Integer VirRs;
                 if(Store.IsRsGlobal){
                     VirRs = VirNameHash(VirT0);
-                    UCode NewLi = new UCode(OpType.li,VirRs,RegType.NULL,Hi+LeftPar+Store.Rs+RightPar,Line);
+                    UCode NewLi = new UCode(OpType.lui,VirRs,RegType.NULL,Hi+LeftPar+Store.Rs+RightPar,Line);
                     ICode NewAdd = new ICode(OpType.add,VirRs,VirRs,Lo+LeftPar+Store.Rs+RightPar,RegType.NULL,RegType.NULL,Line);
                     NewBlock.CodeList.add(NewLi);
                     NewBlock.CodeList.add(NewAdd);
@@ -1412,7 +1421,7 @@ class IrTranslationPass{
                 Integer VirPtr;
                 if(Store.IsPtrGlobal){
                     VirPtr = VirNameHash(VirT1);
-                    UCode NewLi = new UCode(OpType.li,VirPtr,RegType.NULL,Hi+LeftPar+Store.Ptr+RightPar,Line);
+                    UCode NewLi = new UCode(OpType.lui,VirPtr,RegType.NULL,Hi+LeftPar+Store.Ptr+RightPar,Line);
                     ICode NewAdd = new ICode(OpType.add,VirPtr,VirPtr,Lo+LeftPar+Store.Rs+RightPar,RegType.NULL,RegType.NULL,Line);
                     NewBlock.CodeList.add(NewLi);
                     NewBlock.CodeList.add(NewAdd);
@@ -1438,7 +1447,7 @@ class IrTranslationPass{
                 Integer VirRs = VirNameHash(Load.Rd);
                 if(Load.IsPtrGlobal){
                     VirPtr = VirNameHash(VirT1);
-                    UCode NewLi = new UCode(OpType.li,VirPtr,RegType.NULL,Hi+LeftPar+Load.RsPtr+RightPar,Line);
+                    UCode NewLi = new UCode(OpType.lui,VirPtr,RegType.NULL,Hi+LeftPar+Load.RsPtr+RightPar,Line);
                     ICode NewAdd = new ICode(OpType.addi,VirPtr,VirPtr,Lo+LeftPar+Load.RsPtr+RightPar,RegType.NULL,RegType.NULL,Line);
                     NewBlock.CodeList.add(NewLi);
                     NewBlock.CodeList.add(NewAdd);
@@ -1535,7 +1544,7 @@ class IrTranslationPass{
                 }
                 if(Get.IsPtrGlobal){
                     Integer VirPtr = VirNameHash(VirT1);
-                    UCode NewLi = new UCode(OpType.li,VirPtr,RegType.NULL,Hi+LeftPar+Get.Ptr+RightPar,Line);
+                    UCode NewLi = new UCode(OpType.lui,VirPtr,RegType.NULL,Hi+LeftPar+Get.Ptr+RightPar,Line);
                     ICode NewAdd = new ICode(OpType.addi,VirPtr,VirPtr,Lo+LeftPar+Get.Ptr+RightPar,RegType.NULL,RegType.NULL,Line);
                     ICode  NewPtr  = new ICode(OpType.addi,VirNameHash(Get.Rd),VirPtr,StrZero,RegType.NULL,RegType.NULL,Line);
                     NewBlock.CodeList.add(NewLi);
@@ -1569,7 +1578,7 @@ class IrTranslationPass{
                     if(FuncCall.IsGlobal.get(i)){
                         String ParamPtr = FuncCall.Param.get(i);
                         Integer VirPtr = VirNameHash(ParamPtr);
-                        UCode NewLi = new UCode(OpType.li,VirPtr,RegType.NULL,Hi+LeftPar+ParamPtr+RightPar,Line);
+                        UCode NewLi = new UCode(OpType.lui,VirPtr,RegType.NULL,Hi+LeftPar+ParamPtr+RightPar,Line);
                         ICode NewAdd = new ICode(OpType.addi,VirPtr,VirPtr,Lo+LeftPar+ParamPtr+RightPar,RegType.NULL,RegType.NULL,Line);
                    //     ICode Li = new ICode(OpType.addi,VirParamHash,VirNameHash(VirZero),StrZero,RegType.NULL,RegType.NULL,Line);
                         NewBlock.CodeList.add(NewLi);
