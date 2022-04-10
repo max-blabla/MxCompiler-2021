@@ -5,9 +5,7 @@
 
 define void @_global._init(){
 Start0:
-	%_global._init.0 = alloca i32**
 	%_global._init.1 = add, i32 4, i32 0
-	%_global._init.2 = alloca i32
 	%_global._init.3 = mul, i32 %_global._init.1, i32 4
 	%_global._init.5 = add, i32 %_global._init.3, i32 4
 	%_global._init.6 = link i32** @malloc(i32 %_global._init.5)
@@ -15,11 +13,7 @@ Start0:
 	%_global._init.7 = load i32**, i32*** @a
 	store i32** %_global._init.6, i32*** @a
 	%_global._init.8 = load i32**, i32*** @a
-	%_global._init.9 = alloca i32
-	%_global._init.10 = alloca i32
-	%_global._init.11 = alloca _rec*
 	%_global._init.12 = add, i32 5, i32 0
-	%_global._init.13 = alloca i32
 	%_global._init.14 = mul, i32 %_global._init.12, i32 4
 	%_global._init.16 = add, i32 %_global._init.14, i32 4
 	%_global._init.17 = link _rec* @malloc(i32 %_global._init.16)
@@ -27,8 +21,6 @@ Start0:
 	%_global._init.18 = load _rec*, _rec** @b
 	store _rec* %_global._init.17, _rec** @b
 	%_global._init.19 = load _rec*, _rec** @b
-	br End0
-End0:
 	ret void
 }
 
@@ -62,19 +54,14 @@ link i32 @_string.ord(_string %this, i32 %index);
 
 define void @_global.printNum(i32 %_global.printNum.0){
 Start2:
-	%_global.printNum.2 = alloca i32
-	store i32 %_global.printNum.0, i32* %_global.printNum.2
-	%_global.printNum.3 = load i32, i32* %_global.printNum.2
+	%_global.printNum.3 = add, i32 %_global.printNum.0, i32 0
 	%_global.printNum.4 = link _string @_global.toString(i32 %_global.printNum.3)
 	link void @_global.println(_string %_global.printNum.4)
-	br End2
-End2:
 	ret void
 }
 
 define i32 @_global.main(){
 Start3:
-	%_global.main.0 = alloca i32
 	call void @_global._init()
 	%_global.main.1 = add, i32 0, i32 0
 	%_global.main.2 = load i32, i32* @i
@@ -87,8 +74,17 @@ For-Condition4:
 	%_global.main.6 = icmp ult, i32 %_global.main.4, i32 %_global.main.5
 	br i8 %_global.main.6 For-Body4, Succeed4
 For-Body4:
-	br Basic5
-For-Incr4:
+	%_global.main.7 = add, i32 11, i32 0
+	%_global.main.9 = mul, i32 %_global.main.7, i32 4
+	%_global.main.11 = add, i32 %_global.main.9, i32 4
+	%_global.main.12 = link i32* @malloc(i32 %_global.main.11)
+	store i32 %_global.main.7, i32* %_global.main.12
+	%_global.main.13 = load i32**, i32*** @a
+	%_global.main.14 = load i32, i32* @i
+	%_global.main.16 = getelemenptr i32**, %_global.main.13, i32 %_global.main.14
+	%_global.main.15 = load i32*, i32** %_global.main.16
+	store i32* %_global.main.12, i32** %_global.main.16
+	%_global.main.17 = load i32*, i32** %_global.main.16
 	%_global.main.18 = load i32, i32* @i
 	%_global.main.19 = load i32, i32* @i
 	%_global.main.20 = add, i32 %_global.main.19, i32 1
@@ -100,57 +96,74 @@ Succeed4:
 	store i32 %_global.main.21, i32* @i
 	%_global.main.23 = load i32, i32* @i
 	br For-Condition6
-Basic5:
-	%_global.main.7 = add, i32 11, i32 0
-	%_global.main.8 = alloca i32
-	%_global.main.9 = mul, i32 %_global.main.7, i32 4
-	%_global.main.11 = add, i32 %_global.main.9, i32 4
-	%_global.main.12 = link i32* @malloc(i32 %_global.main.11)
-	store i32 %_global.main.7, i32* %_global.main.12
-	%_global.main.13 = load i32**, i32*** @a
-	%_global.main.14 = load i32, i32* @i
-	%_global.main.16 = getelemenptr i32**, %_global.main.13, i32 %_global.main.14
-	%_global.main.15 = load i32*, i32** %_global.main.16
-	store i32* %_global.main.12, i32** %_global.main.16
-	%_global.main.17 = load i32*, i32** %_global.main.16
-	br Succeed5
-Succeed5:
-	br For-Incr4
 For-Condition6:
 	%_global.main.24 = load i32, i32* @i
 	%_global.main.25 = add, i32 4, i32 0
 	%_global.main.26 = icmp ult, i32 %_global.main.24, i32 %_global.main.25
 	br i8 %_global.main.26 For-Body6, Succeed6
 For-Body6:
-	br Basic7
-For-Incr6:
-	%_global.main.45 = load i32, i32* @i
-	%_global.main.46 = load i32, i32* @i
-	%_global.main.47 = add, i32 %_global.main.46, i32 1
-	store i32 %_global.main.47, i32* @i
-	br For-Condition6
+	%_global.main.27 = add, i32 0, i32 0
+	%_global.main.28 = load i32, i32* @j
+	store i32 %_global.main.27, i32* @j
+	%_global.main.29 = load i32, i32* @j
+	br For-Condition8
 Succeed6:
 	%_global.main.48 = add, i32 0, i32 0
 	%_global.main.49 = load i32, i32* @i
 	store i32 %_global.main.48, i32* @i
 	%_global.main.50 = load i32, i32* @i
 	br For-Condition9
-Basic7:
-	%_global.main.27 = add, i32 0, i32 0
-	%_global.main.28 = load i32, i32* @j
-	store i32 %_global.main.27, i32* @j
-	%_global.main.29 = load i32, i32* @j
-	br For-Condition8
-Succeed7:
-	br For-Incr6
+For-Condition8:
+	%_global.main.30 = load i32, i32* @j
+	%_global.main.31 = add, i32 10, i32 0
+	%_global.main.32 = icmp ult, i32 %_global.main.30, i32 %_global.main.31
+	br i8 %_global.main.32 For-Body8, Succeed8
 For-Condition9:
 	%_global.main.51 = load i32, i32* @i
 	%_global.main.52 = add, i32 5, i32 0
 	%_global.main.53 = icmp ult, i32 %_global.main.51, i32 %_global.main.52
 	br i8 %_global.main.53 For-Body9, Succeed9
+For-Body8:
+	%_global.main.33 = add, i32 888, i32 0
+	%_global.main.34 = load i32**, i32*** @a
+	%_global.main.35 = load i32, i32* @i
+	%_global.main.37 = getelemenptr i32**, %_global.main.34, i32 %_global.main.35
+	%_global.main.36 = load i32*, i32** %_global.main.37
+	%_global.main.38 = load i32, i32* @j
+	%_global.main.40 = getelemenptr i32*, %_global.main.36, i32 %_global.main.38
+	%_global.main.39 = load i32, i32* %_global.main.40
+	store i32 %_global.main.33, i32* %_global.main.40
+	%_global.main.41 = load i32, i32* %_global.main.40
+	%_global.main.42 = load i32, i32* @j
+	%_global.main.43 = load i32, i32* @j
+	%_global.main.44 = add, i32 %_global.main.43, i32 1
+	store i32 %_global.main.44, i32* @j
+	br For-Condition8
+Succeed8:
+	%_global.main.45 = load i32, i32* @i
+	%_global.main.46 = load i32, i32* @i
+	%_global.main.47 = add, i32 %_global.main.46, i32 1
+	store i32 %_global.main.47, i32* @i
+	br For-Condition6
 For-Body9:
-	br Basic10
-For-Incr9:
+	%_global.main.55 = add, i32 8, i32 0
+	%_global.main.54 = link _rec @malloc(i32 %_global.main.55)
+	call void @_rec._init(_rec %_global.main.54)
+	%_global.main.57 = load _rec*, _rec** @b
+	%_global.main.58 = load i32, i32* @i
+	%_global.main.60 = getelemenptr _rec*, %_global.main.57, i32 %_global.main.58
+	%_global.main.59 = load _rec, _rec* %_global.main.60
+	store _rec %_global.main.56, _rec* %_global.main.60
+	%_global.main.61 = load _rec, _rec* %_global.main.60
+	%_global.main.62 = add, i32 -1, i32 0
+	%_global.main.63 = load _rec*, _rec** @b
+	%_global.main.64 = load i32, i32* @i
+	%_global.main.66 = getelemenptr _rec*, %_global.main.63, i32 %_global.main.64
+	%_global.main.65 = load _rec, _rec* %_global.main.66
+	%_global.main.67 = getelemenptr i32*, %_global.main.65, i32 0, i32 0
+	%_global.main.68 = load i32, i32* %_global.main.67
+	store i32 %_global.main.62, i32* %_global.main.67
+	%_global.main.69 = load i32, i32* %_global.main.67
 	%_global.main.70 = load i32, i32* @i
 	%_global.main.71 = load i32, i32* @i
 	%_global.main.72 = add, i32 %_global.main.71, i32 1
@@ -170,53 +183,6 @@ Succeed9:
 	store i32 %_global.main.81, i32* @i
 	%_global.main.83 = load i32, i32* @i
 	br For-Condition11
-For-Condition8:
-	%_global.main.30 = load i32, i32* @j
-	%_global.main.31 = add, i32 10, i32 0
-	%_global.main.32 = icmp ult, i32 %_global.main.30, i32 %_global.main.31
-	br i8 %_global.main.32 For-Body8, Succeed8
-For-Body8:
-	%_global.main.33 = add, i32 888, i32 0
-	%_global.main.34 = load i32**, i32*** @a
-	%_global.main.35 = load i32, i32* @i
-	%_global.main.37 = getelemenptr i32**, %_global.main.34, i32 %_global.main.35
-	%_global.main.36 = load i32*, i32** %_global.main.37
-	%_global.main.38 = load i32, i32* @j
-	%_global.main.40 = getelemenptr i32*, %_global.main.36, i32 %_global.main.38
-	%_global.main.39 = load i32, i32* %_global.main.40
-	store i32 %_global.main.33, i32* %_global.main.40
-	%_global.main.41 = load i32, i32* %_global.main.40
-	br For-Incr8
-For-Incr8:
-	%_global.main.42 = load i32, i32* @j
-	%_global.main.43 = load i32, i32* @j
-	%_global.main.44 = add, i32 %_global.main.43, i32 1
-	store i32 %_global.main.44, i32* @j
-	br For-Condition8
-Succeed8:
-	br Succeed7
-Basic10:
-	%_global.main.55 = add, i32 8, i32 0
-	%_global.main.54 = link _rec @malloc(i32 %_global.main.55)
-	call void @_rec._init(_rec %_global.main.54)
-	%_global.main.57 = load _rec*, _rec** @b
-	%_global.main.58 = load i32, i32* @i
-	%_global.main.60 = getelemenptr _rec*, %_global.main.57, i32 %_global.main.58
-	%_global.main.59 = load _rec, _rec* %_global.main.60
-	store _rec %_global.main.56, _rec* %_global.main.60
-	%_global.main.61 = load _rec, _rec* %_global.main.60
-	%_global.main.62 = add, i32 -1, i32 0
-	%_global.main.63 = load _rec*, _rec** @b
-	%_global.main.64 = load i32, i32* @i
-	%_global.main.66 = getelemenptr _rec*, %_global.main.63, i32 %_global.main.64
-	%_global.main.65 = load _rec, _rec* %_global.main.66
-	%_global.main.67 = getelemenptr i32*, %_global.main.65, i32 0, i32 0
-	%_global.main.68 = load i32, i32* %_global.main.67
-	store i32 %_global.main.62, i32* %_global.main.67
-	%_global.main.69 = load i32, i32* %_global.main.67
-	br Succeed10
-Succeed10:
-	br For-Incr9
 For-Condition11:
 	%_global.main.84 = load i32, i32* @i
 	%_global.main.85 = add, i32 3, i32 0
@@ -228,12 +194,6 @@ For-Body11:
 	store i32 %_global.main.87, i32* @j
 	%_global.main.89 = load i32, i32* @j
 	br For-Condition12
-For-Incr11:
-	%_global.main.109 = load i32, i32* @i
-	%_global.main.110 = load i32, i32* @i
-	%_global.main.111 = add, i32 %_global.main.110, i32 1
-	store i32 %_global.main.111, i32* @i
-	br For-Condition11
 Succeed11:
 	%_global.main.112 = add, i32 0, i32 0
 	%_global.main.113 = load i32, i32* @i
@@ -245,6 +205,11 @@ For-Condition12:
 	%_global.main.91 = add, i32 9, i32 0
 	%_global.main.92 = icmp ule, i32 %_global.main.90, i32 %_global.main.91
 	br i8 %_global.main.92 For-Body12, Succeed12
+For-Condition13:
+	%_global.main.115 = load i32, i32* @i
+	%_global.main.116 = add, i32 3, i32 0
+	%_global.main.117 = icmp ule, i32 %_global.main.115, i32 %_global.main.116
+	br i8 %_global.main.117 For-Body13, Succeed13
 For-Body12:
 	%_global.main.93 = load i32, i32* @i
 	%_global.main.94 = add, i32 10, i32 0
@@ -260,32 +225,23 @@ For-Body12:
 	%_global.main.103 = load i32, i32* %_global.main.104
 	store i32 %_global.main.97, i32* %_global.main.104
 	%_global.main.105 = load i32, i32* %_global.main.104
-	br For-Incr12
-For-Incr12:
 	%_global.main.106 = load i32, i32* @j
 	%_global.main.107 = load i32, i32* @j
 	%_global.main.108 = add, i32 %_global.main.107, i32 1
 	store i32 %_global.main.108, i32* @j
 	br For-Condition12
 Succeed12:
-	br For-Incr11
-For-Condition13:
-	%_global.main.115 = load i32, i32* @i
-	%_global.main.116 = add, i32 3, i32 0
-	%_global.main.117 = icmp ule, i32 %_global.main.115, i32 %_global.main.116
-	br i8 %_global.main.117 For-Body13, Succeed13
+	%_global.main.109 = load i32, i32* @i
+	%_global.main.110 = load i32, i32* @i
+	%_global.main.111 = add, i32 %_global.main.110, i32 1
+	store i32 %_global.main.111, i32* @i
+	br For-Condition11
 For-Body13:
 	%_global.main.118 = add, i32 0, i32 0
 	%_global.main.119 = load i32, i32* @j
 	store i32 %_global.main.118, i32* @j
 	%_global.main.120 = load i32, i32* @j
 	br For-Condition14
-For-Incr13:
-	%_global.main.135 = load i32, i32* @i
-	%_global.main.136 = load i32, i32* @i
-	%_global.main.137 = add, i32 %_global.main.136, i32 1
-	store i32 %_global.main.137, i32* @i
-	br For-Condition13
 Succeed13:
 	%_global.main.138 = add, i32 0, i32 0
 	%_global.main.139 = load i32**, i32*** @a
@@ -344,8 +300,8 @@ Succeed13:
 	%_global.main.189 = load i32, i32* %_global.main.188
 	call void @_global.printNum(i32 %_global.main.189)
 	%_global.main.191 = add, i32 0, i32 0
-	store i32 %_global.main.191, i32* %_global.main.0
-	br End3
+	%_global.main.192 = add, i32 %_global.main.191, i32 0
+	ret i32 %_global.main.192
 For-Condition14:
 	%_global.main.121 = load i32, i32* @j
 	%_global.main.122 = add, i32 9, i32 0
@@ -360,18 +316,17 @@ For-Body14:
 	%_global.main.130 = getelemenptr i32*, %_global.main.126, i32 %_global.main.128
 	%_global.main.129 = load i32, i32* %_global.main.130
 	call void @_global.printNum(i32 %_global.main.129)
-	br For-Incr14
-For-Incr14:
 	%_global.main.132 = load i32, i32* @j
 	%_global.main.133 = load i32, i32* @j
 	%_global.main.134 = add, i32 %_global.main.133, i32 1
 	store i32 %_global.main.134, i32* @j
 	br For-Condition14
 Succeed14:
-	br For-Incr13
-End3:
-	%_global.main.192 = load i32, i32* %_global.main.0
-	ret i32 %_global.main.192
+	%_global.main.135 = load i32, i32* @i
+	%_global.main.136 = load i32, i32* @i
+	%_global.main.137 = add, i32 %_global.main.136, i32 1
+	store i32 %_global.main.137, i32* @i
+	br For-Condition13
 }
 
 link i32 @_string.length(_string %this);
@@ -385,9 +340,5 @@ link i32 @_string.ord(_string %this, i32 %index);
 
 define void @_rec._init(_rec %_rec._init.0){
 Start1:
-	%_rec._init.1 = alloca _rec
-	store _rec %_rec._init.0, _rec* %_rec._init.1
-	br End1
-End1:
 	ret void
 }

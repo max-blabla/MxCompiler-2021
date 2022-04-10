@@ -65,7 +65,7 @@ public class Main {
                     IR.FileRun(IROutputFile);
                     PostIRBuilder PostIrBuilder = new PostIRBuilder();
                     PostIrBuilder.setModuleList(IR.GetModuleList());
-                    PostIrBuilder.StartOpt(1);
+                    PostIrBuilder.StartOpt(2);
                     IR.FileRun(OptIROutputFile);
                     CodeGeneratorColoring CG = new CodeGeneratorColoring(IR.GetModuleList(), IR.getConstStrs());
                     CG.Run();
