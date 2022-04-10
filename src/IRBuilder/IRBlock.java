@@ -36,6 +36,11 @@ public class IRBlock{
         Note = note;
         Label = Note+Serial;
     }
+
+    public BlockType getBlockType() {
+        return blockType;
+    }
+
     public void ShutBlock(){
         IsShut = true;
     }

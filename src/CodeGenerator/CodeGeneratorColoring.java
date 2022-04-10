@@ -10,9 +10,7 @@ import java.util.Map.Entry;
 import java.util.*;
 
 //TODO 启发
-//TODO 重写
 //TODO 重溢出
-//TODO 协议替换 ： 全局指针，
 class AdjMatrix{
     HashMap<Integer,HashSet<Integer>> Matrix;
     void AddAdj(Integer U,Integer V){
@@ -60,7 +58,7 @@ class GraphColoringPass{
     HashSet<BaseCode> WorklistMoves;
     HashSet<BaseCode> ActiveMoves;
     AdjMatrix AdjSet;
-    HashMap<Integer,List<Integer>> AdjList;
+    HashMap<Integer,HashSet<Integer>> AdjList;
     HashMap<Integer,Integer> Degree;
     HashMap<Integer,HashSet<BaseCode>> MoveList;
     HashMap<Integer,Integer> Alias;
@@ -73,6 +71,8 @@ class GraphColoringPass{
     List<RegType> StaticOKColors;
     HashMap<String,HashSet<Integer>> BlocksLiveOut;
     Integer K;
+    HashSet<Integer> SpilledGenerated;
+    HashMap<Integer,Integer> VirNameScoring;
     HashMap<String,Integer> VirNameHashTable;
     HashMap<Integer,Integer> StackStorage;
     HashMap<OpType,OpType> ImmTransfrom;
@@ -82,6 +82,7 @@ class GraphColoringPass{
     ControlFlowGraph CFG;
     Integer VirZero;
     Integer RewriteCnt;
+    Integer Depth;
     Integer ColorUsed;
     GraphColoringPass(FuncCodeInfo FCI,FunctionSection funcSec,ControlFlowGraph cfg,IRFunc irFunc){
         MedianTempNum = 0;
@@ -91,7 +92,7 @@ class GraphColoringPass{
         AllocaNum = FCI.AllocaNum;
         VirNameHashTable = FCI.VirNameHashTable;
         StackStorage = FCI.VirStackStorage;
-        VirZero = FCI.VirNameHashTable.get("0");
+        VirZero = FCI.VirNameHashTable.get(".zero");
         K = 18;
         StaticOKColors = new ArrayList<>(Arrays.asList(
                 RegType.s0,RegType.s1,RegType.s2,RegType.s3,RegType.s4,RegType.s5,RegType.s6, RegType.s7,RegType.s8,
@@ -142,23 +143,33 @@ class GraphColoringPass{
         AdjList = new HashMap<>();
         Degree = new HashMap<>();
         MoveList = new HashMap<>();
+        VirNameScoring = new HashMap<>();
+        SpilledGenerated = new HashSet<>();
+        Depth = 0;
     }
+
+
     void Init(){
         RewriteCnt = 0;
         System.out.println("All VirReg:");
         for(Entry<String,Integer> entry:VirNameHashTable.entrySet()){
             Degree.put(entry.getValue(),0);
-            AdjList.put(entry.getValue(),new ArrayList<>());
+            AdjList.put(entry.getValue(),new HashSet<>());
             Initial.add(entry.getValue());
             MoveList.put(entry.getValue(),new HashSet<>());
             Alias.put(entry.getValue(),entry.getValue());
+            VirNameScoring.put(entry.getValue(),1);
             System.out.print(entry.getValue().toString()+' ');
         }
         System.out.println();
         System.out.println("All PreReg:");
         for(Entry<String,RegType> entry:PreColorTable.entrySet()){
             Integer VirPreColor = VirNameHashTable.get(entry.getKey());
-            if(VirPreColor!=null && precolored.contains(VirPreColor)){Color.put(VirPreColor,entry.getValue());}
+            if(VirPreColor!=null && precolored.contains(VirPreColor)){
+                Color.put(VirPreColor,entry.getValue());
+                Degree.replace(VirPreColor,Integer.MAX_VALUE);
+                VirNameScoring.put(VirPreColor,1);
+            }
         }
         for(Integer pre :precolored) System.out.print(pre.toString() + ' ');
         System.out.println();
@@ -186,7 +197,7 @@ class GraphColoringPass{
         RegType PtrChange = RegType.NULL;
         int AllocaSize = AllocaNum * 4;
         for(BlockSection Block : Blocks){
-            BlockSection NewBlock = new BlockSection(Block.BlockLable,Block.IRBlockLabel);
+            BlockSection NewBlock = new BlockSection(Block.BlockLable,Block.IRBlockLabel,Block.LoopStatus);
             Iterator<BaseCode> Iter = Block.CodeList.iterator();
             while(Iter.hasNext()){
                 BaseCode Code = Iter.next();
@@ -198,6 +209,27 @@ class GraphColoringPass{
                         L.Rs = PtrChange;
                         L.Imm = PtrOffsetChange;
                     }
+                    else if(L.Op==OpType.plw){
+                        int StackPos = AllocaSize - Integer.parseInt(L.Imm.substring(5)) * 4;
+                        if(StackPos < 2047){
+                            L.Rs = RegType.sp;
+                            L.Imm = Integer.toString(StackPos);
+                            L.Op = OpType.lw;
+                        }
+                        else {
+                            IsAdd = false;
+                            SCode T0Store = new SCode(OpType.sw,-3,-3,RegType.t0,RegType.sp,StrZero,-3);
+                            UCode NewLi = new UCode(OpType.li, -3, RegType.t0, Integer.toString(StackPos), -3);
+                            LCode NewLoad = new LCode(OpType.lw,-3,-3,L.Rd,RegType.t0,StrZero,L.Line);
+                            LCode T0Load = new LCode(OpType.lw,-3,-3,RegType.t0,RegType.sp,StrZero,-3);
+                            NewBlock.CodeList.add(T0Store);
+                            NewBlock.CodeList.add(NewLi);
+                            NewBlock.CodeList.add(NewLoad);
+                            NewBlock.CodeList.add(T0Load);
+
+                        }
+
+                    }
                 }
                 else if(Code instanceof SCode){
                     SCode S = (SCode) Code;
@@ -205,6 +237,27 @@ class GraphColoringPass{
                         IsPtrChange = false;
                         S.Rs2 = PtrChange;
                         S.Imm = PtrOffsetChange;
+                    }
+                    else if(S.Op==OpType.psw){
+                        int StackPos = AllocaSize - Integer.parseInt(S.Imm.substring(5)) * 4;
+                        if(StackPos < 2047){
+                            S.Rs2 = RegType.sp;
+                            S.Imm = Integer.toString(StackPos);
+                            S.Op = OpType.sw;
+                        }
+                        else {
+                            IsAdd = false;
+                            SCode T0Store = new SCode(OpType.sw,-3,-3,RegType.t0,RegType.sp,StrZero,-3);
+                            UCode NewLi = new UCode(OpType.li, -3, RegType.t0, Integer.toString(StackPos), -3);
+                            SCode NewStore = new SCode(OpType.sw,-3,-3,S.Rs1,RegType.t0,StrZero,S.Line);
+                            LCode T0Load = new LCode(OpType.lw,-3,-3,RegType.t0,RegType.sp,StrZero,-3);
+                            NewBlock.CodeList.add(T0Store);
+                            NewBlock.CodeList.add(NewLi);
+                            NewBlock.CodeList.add(NewStore);
+                            NewBlock.CodeList.add(T0Load);
+
+                        }
+
                     }
                 }
                 else if(Code instanceof PCode){}
@@ -259,8 +312,9 @@ class GraphColoringPass{
         ArrayList<BlockSection> NewBlocks = new ArrayList<>();
         int ReserveTop = Math.min(ColorUsed,12)+1;
         int StackSize = (AllocaNum+ReserveTop) * 4;
+
         for(BlockSection Block : Blocks){
-            BlockSection NewBlock = new BlockSection(Block.BlockLable,Block.IRBlockLabel);
+            BlockSection NewBlock = new BlockSection(Block.BlockLable,Block.IRBlockLabel,Block.LoopStatus);
             for(BaseCode Code :Block.CodeList){
                 if(Code instanceof LCode){
                     LCode L = (LCode) Code;
@@ -302,7 +356,7 @@ class GraphColoringPass{
             }
             NewBlocks.add(NewBlock);
         }
-        BlockSection NewStartBlock =  new BlockSection("","");
+        BlockSection NewStartBlock =  new BlockSection("","",0);
 
         String Next = NewBlocks.get(0).BlockLable;
         JCode Jump = new JCode(OpType.j,Next,0);
@@ -356,8 +410,26 @@ class GraphColoringPass{
         Blocks = NewBlocks;
     }
 
+    void IterationInit(){
+        for(Integer Init : Initial){
+            Degree.replace(Init,0);
+            AdjList.replace(Init,new HashSet<>());
+            //   Initial.add(entry.getValue());
+            MoveList.replace(Init,new HashSet<>());
+            Alias.replace(Init,Init);
+            VirNameScoring.replace(Init,1);
+            System.out.print(Init.toString()+' ');
+        }
+        AdjSet = new AdjMatrix();
+        for(Integer Pre : precolored){
+                VirNameScoring.replace(Pre,1);
+                Degree.replace(Pre,Integer.MAX_VALUE);
+        }
+    }
+
     void Main(){
-        LivenessAnaysisPass NewLiveNess = new LivenessAnaysisPass(CFG.StartNode,Blocks,CFG,FuncSec.FuncName);
+        Depth++;
+        LivenessAnaysisPass NewLiveNess = new LivenessAnaysisPass(CFG.StartNode,Blocks,CFG,FuncSec.FuncName,VirNameScoring);
         NewLiveNess.Run();
         BlocksLiveOut = NewLiveNess.BlockOut;
         Build();
@@ -370,8 +442,9 @@ class GraphColoringPass{
         }while(!SimplifyWorklist.isEmpty() || !WorklistMoves.isEmpty() || !FreezeWorklist.isEmpty() || !SpillWorklist.isEmpty());
     //    AdjSet.ShowMatrix();
         AssignColors();
-        if(!SpilledNodes.isEmpty()){
+        if(!SpilledNodes.isEmpty() && Depth < 3){
             RewriteProgram();
+            IterationInit();
             Main();
         }
     }
@@ -433,19 +506,21 @@ class GraphColoringPass{
 
     void Build(){
         for(BlockSection Block : Blocks){
+
             HashSet<Integer> live = BlocksLiveOut.get(Block.IRBlockLabel);
             for(int i = Block.CodeList.size()-1;i>=0;i--){
                 BaseCode Code = Block.CodeList.get(i);
                 List<Integer> Uses = UseDetermine(Code);
                 Integer Def = DefDetermine(Code);
+                if(Objects.equals(Block.BlockLable, ".LBB0_27") &&Code instanceof  SCode){
+                    int now = 1;
+                }
                 if(IsMoveInstruction(Code)) {
-                    Uses.forEach(live::remove);
+                    for(Integer Use : Uses) live.remove(Use);
+                    //Uses.forEach(live::remove);
                     HashSet<Integer> OccurReg = new HashSet<>(Uses);
                     if(Def >= 0) OccurReg.add(Def);
-                    for (Integer n : OccurReg){
-                        if(MoveList.containsKey(n)) MoveList.get(n).add(Code);
-                        else MoveList.put(n,new HashSet<>(Set.of(Code)));
-                    }
+                    for (Integer n : OccurReg) MoveList.get(n).add(Code);
                     WorklistMoves.add(Code);
                 }
                 if(Def >= 0) {
@@ -475,7 +550,7 @@ class GraphColoringPass{
             }
             if(!precolored.contains(v)){
                 AdjList.get(v).add(u);
-                Degree.replace(u,Degree.get(v)+1);
+                Degree.replace(v,Degree.get(v)+1);
             }
         }
     }
@@ -485,6 +560,9 @@ class GraphColoringPass{
         while(Iter.hasNext()){
             Integer N = Iter.next();
             Iter.remove();
+            if(Depth > 1){
+                int now = 1;
+            }
             if(Degree.get(N) >= K) SpillWorklist.add(N);
             else if(MoveRelated(N)) FreezeWorklist.add(N);
             else SimplifyWorklist.add(N);
@@ -507,17 +585,22 @@ class GraphColoringPass{
     }
 
     Boolean MoveRelated(Integer N){
-        return NodeMoves(N).isEmpty();
+        return !NodeMoves(N).isEmpty();
     }
 
     void Simplify(){
         Iterator<Integer> Iter = SimplifyWorklist.iterator();
-        while(Iter.hasNext()){
+        if(Iter.hasNext()){
             Integer N = Iter.next();
             Iter.remove();
             SelectStack.push(N);
             List<Integer> AdjcantN = Adjacent(N);
-            for(Integer M : AdjcantN) DecrementDegree(M);
+            for(Integer M : AdjcantN){
+                if(precolored.contains(M)){
+                    int now = 1;
+                }
+                DecrementDegree(M);
+            }
         }
     }
 
@@ -572,7 +655,7 @@ class GraphColoringPass{
         } else {
             List<Integer> Conser = new ArrayList<>(Adjacent(U) );
             Conser.addAll(Adjacent(V));
-            if ((precolored.contains(U) && OK(Adjacent(V), U)) || (!precolored.contains(U) && Conservative(Conser))) {
+            if (precolored.contains(U) && OK(Adjacent(V), U) || !precolored.contains(U) && Conservative(Conser)) {
                 CoalescedMoves.add(Mv);
                 Combine(U, V);
                 AddWorkList(U);
@@ -589,7 +672,7 @@ class GraphColoringPass{
 
     Boolean OK(List<Integer> Adjacent, Integer r){
         boolean Ret = true;
-        for(Integer Adj : Adjacent) Ret = Ret && (precolored.contains(Adj) || Degree.get(Adj) < K ||  AdjSet.IsAdj(Adj,r));
+        for(Integer Adj : Adjacent) Ret = Ret && ( Degree.get(Adj) < K ||precolored.contains(Adj) ||  AdjSet.IsAdj(Adj,r));
         return Ret;
     }
 
@@ -609,6 +692,7 @@ class GraphColoringPass{
         else SpillWorklist.remove(V);
         CoalescedNodes.add(V);
         Alias.replace(V,U);
+        MoveList.get(U).addAll(MoveList.get(V));
         EnableMoves(List.of(V));
         List<Integer> Adjacent = Adjacent(V);
         for(Integer Adj : Adjacent){
@@ -649,25 +733,45 @@ class GraphColoringPass{
     }
 
     void SelectSpill(){
-        Integer Choose = -1;
+        int Choose = -1;
+        double ScoreAvg = Integer.MAX_VALUE;
+        double Candidater;
         for(Integer M : SpillWorklist){
-            Choose = M;
-            break;
+            if(SpilledGenerated.contains(M)) continue;
+            Candidater =(VirNameScoring.get(M) / (double)  Degree.get(M));
+            Choose = Candidater <  ScoreAvg ? M : Choose;
+            ScoreAvg = Math.min(ScoreAvg, Candidater);
         }
-        SpillWorklist.remove(Choose);
-        SimplifyWorklist.add(Choose);
-        FreezeMoves(Choose);
-
+        if(Choose == -1) {
+            for (Integer M : SpillWorklist) {
+                Candidater = (VirNameScoring.get(M) / (double) Degree.get(M));
+                Choose = Candidater < ScoreAvg ? M : Choose;
+                ScoreAvg = Math.min(ScoreAvg, Candidater);
+            }
+        }
+        if(Choose != -1) {
+            SpillWorklist.remove(Choose);
+            SimplifyWorklist.add(Choose);
+            FreezeMoves(Choose);
+        }
     }
 
     void AssignColors(){
         HashSet<Integer> Cope = new HashSet<>(precolored);
+        Cope.addAll(ColoredNodes);
         Iterator<RegType> Iter;
-        List<RegType> OKColors = new ArrayList<>(StaticOKColors);
         HashSet<RegType> ColorUsedSet = new HashSet<>();
         while(!SelectStack.isEmpty()){
+
             Integer N = SelectStack.pop();
-            for(Integer W : AdjList.get(N)) if(Cope.contains(GetAlias(W))) OKColors.remove(Color.get(GetAlias(W)));
+            if(N==5){
+                int now  =1;
+            }
+            List<RegType> OKColors = new ArrayList<>(StaticOKColors);
+            for(Integer W : AdjList.get(N)) {
+                if (Cope.contains(GetAlias(W)))
+                    OKColors.remove(Color.get(GetAlias(W)));
+            }
             if(OKColors.isEmpty()) SpilledNodes.add(N);
             else{
                 ColoredNodes.add(N);
@@ -690,40 +794,29 @@ class GraphColoringPass{
         ++RewriteCnt;
         System.out.println("Rewrite"+RewriteCnt);
         HashSet<Integer> NewTemps = new HashSet<>();
-        HashMap<Integer,Integer> LocalTempMap =new HashMap<>();
+        System.out.println(SpilledNodes.size());
         for(Integer v :SpilledNodes){
+            System.out.print(" "+v);
             Integer StackPos = ++AllocaNum;
             StackStorage.put(v,StackPos);
-            Integer NewVir = VirNameHashTable.size();
-            LocalTempMap.put(v,NewVir);
-            NewTemps.add(NewVir);
-            VirNameHashTable.put(MedianTemp+v,NewVir);
-            Degree.put(NewVir,0);
-            AdjList.put(NewVir,new ArrayList<>());
-            Initial.add(NewVir);
-            MoveList.put(NewVir,new HashSet<>());
-            Alias.put(NewVir,NewVir);
         }
+        System.out.println();
         ArrayList<BlockSection> NewBlocks = new ArrayList<>();
         for(BlockSection BlockSec :Blocks){
-            BlockSection NewBlock = new BlockSection(BlockSec.BlockLable,BlockSec.IRBlockLabel);
+            BlockSection NewBlock = new BlockSection(BlockSec.BlockLable,BlockSec.IRBlockLabel,BlockSec.LoopStatus);
             for(BaseCode Code: BlockSec.CodeList){
                 if(Code instanceof LCode){
                     LCode L = (LCode) Code;
                     if(SpilledNodes.contains(L.VirRs)){
-                        Integer NewVirRs = LocalTempMap.get(L.VirRs);
-                        LCode NewLoad = new LCode(OpType.lw, NewVirRs,NewVirRs,RegType.NULL,RegType.NULL,StrZero,-2);
-                        UCode NewLi = new UCode(OpType.ali,NewVirRs,RegType.NULL,Sptr+StackStorage.get(L.VirRs),-2);
-                        NewBlock.CodeList.add(NewLi);
+                        Integer NewVirRs = NewVirTemp(L.VirRs,NewTemps);
+                        LCode NewLoad = new LCode(OpType.plw, NewVirRs,VirZero,RegType.NULL,RegType.NULL,Sptr+StackStorage.get(L.VirRs),-2);
                         NewBlock.CodeList.add(NewLoad);
                         L.VirRs  = NewVirRs;
                     }
                     NewBlock.CodeList.add(L);
                     if(SpilledNodes.contains(L.VirRd)) {
-                        Integer NewVirRd = LocalTempMap.get(L.VirRd);
-                        SCode NewStore = new SCode(OpType.sw,NewVirRd, NewVirRd, RegType.NULL, RegType.NULL, StrZero, -2);
-                        UCode NewLi = new UCode(OpType.ali,NewVirRd,RegType.NULL,Sptr +StackStorage.get(L.VirRd),-2);
-                        NewBlock.CodeList.add(NewLi);
+                        Integer NewVirRd = NewVirTemp(L.VirRd,NewTemps);
+                        SCode NewStore = new SCode(OpType.psw,NewVirRd, VirZero, RegType.NULL, RegType.NULL,Sptr +StackStorage.get(L.VirRd), -2);
                         NewBlock.CodeList.add(NewStore);
                         L.VirRd  = NewVirRd;
                     }
@@ -731,18 +824,14 @@ class GraphColoringPass{
                 else if(Code instanceof SCode){
                     SCode S = (SCode) Code;
                     if(SpilledNodes.contains(S.VirRs1)) {
-                        Integer NewVirRs1 = LocalTempMap.get(S.VirRs1);
-                        LCode NewLoad = new LCode(OpType.lw,NewVirRs1,NewVirRs1,RegType.NULL,RegType.NULL,StrZero,-2);
-                        UCode NewLi = new UCode(OpType.ali,NewVirRs1,RegType.NULL,Sptr +StackStorage.get(S.VirRs1),-2);
-                        NewBlock.CodeList.add(NewLi);
+                        Integer NewVirRs1 = NewVirTemp(S.VirRs1,NewTemps);
+                        LCode NewLoad = new LCode(OpType.plw, NewVirRs1,VirZero,RegType.NULL,RegType.NULL,Sptr+StackStorage.get(S.VirRs1),-2);
                         NewBlock.CodeList.add(NewLoad);
                         S.VirRs1 = NewVirRs1;
                     }
                     if(SpilledNodes.contains(S.VirRs2)){
-                        Integer NewVirRs2 = LocalTempMap.get(S.VirRs2);
-                        LCode NewLoad = new LCode(OpType.lw,NewVirRs2,NewVirRs2,RegType.NULL,RegType.NULL,StrZero,-2);
-                        UCode NewLi = new UCode(OpType.ali,NewVirRs2,RegType.NULL,Sptr +StackStorage.get(S.VirRs2),-2);
-                        NewBlock.CodeList.add(NewLi);
+                        Integer NewVirRs2 = NewVirTemp(S.VirRs2,NewTemps);
+                        LCode NewLoad = new LCode(OpType.plw, NewVirRs2,VirZero,RegType.NULL,RegType.NULL,Sptr+StackStorage.get(S.VirRs2),-2);
                         NewBlock.CodeList.add(NewLoad);
                         S.VirRs2 = NewVirRs2;
                     }
@@ -751,49 +840,39 @@ class GraphColoringPass{
                 else if(Code instanceof PCode){
                     PCode P = (PCode) Code;
                     if(SpilledNodes.contains(P.VirRs)){
-                        Integer NewVirRs = LocalTempMap.get(P.VirRs);
-                        LCode NewLoad = new LCode(OpType.lw,NewVirRs,NewVirRs,RegType.NULL,RegType.NULL,StrZero,-2);
-                        UCode NewLi = new UCode(OpType.ali,NewVirRs,RegType.NULL,Sptr +StackStorage.get(P.VirRs),-2);
-                        NewBlock.CodeList.add(NewLi);
+                        Integer NewVirRs = NewVirTemp(P.VirRs,NewTemps);
+                        LCode NewLoad = new LCode(OpType.plw, NewVirRs,VirZero,RegType.NULL,RegType.NULL,Sptr+StackStorage.get(P.VirRs),-2);
                         NewBlock.CodeList.add(NewLoad);
                         P.VirRs = NewVirRs;
                     }
                     NewBlock.CodeList.add(P);
                     if(SpilledNodes.contains(P.VirRd)){
-                        Integer NewVirRd = LocalTempMap.get(P.VirRd);
-                        SCode NewStore = new SCode(OpType.sw, NewVirRd, NewVirRd, RegType.NULL, RegType.NULL, StrZero, -2);
-                        UCode NewLi = new UCode(OpType.ali,NewVirRd,RegType.NULL,Sptr +StackStorage.get(P.VirRd),-2);
-                        NewBlock.CodeList.add(NewLi);
+                        Integer NewVirRd = NewVirTemp(P.VirRd,NewTemps);
+                        SCode NewStore = new SCode(OpType.psw,NewVirRd, VirZero, RegType.NULL, RegType.NULL,Sptr +StackStorage.get(P.VirRd), -2);
+                        NewBlock.CodeList.add(NewStore);
                         NewBlock.CodeList.add(NewStore);
                         P.VirRd = NewVirRd;
                     }
                 }
                 else if(Code instanceof RCode){
                     RCode R = (RCode) Code;
-
                     if(SpilledNodes.contains(R.VirRs1)){
-                        Integer NewVirRs1 = LocalTempMap.get(R.VirRs1);
-                        LCode NewLoad = new LCode(OpType.lw,NewVirRs1,NewVirRs1,RegType.NULL,RegType.NULL,StrZero,-2);
-                        UCode NewLi = new UCode(OpType.ali,NewVirRs1,RegType.NULL,Sptr +StackStorage.get(R.VirRs1),-2);
-                        NewBlock.CodeList.add(NewLi);
+                        Integer NewVirRs1 = NewVirTemp(R.VirRs1,NewTemps);
+                        LCode NewLoad = new LCode(OpType.plw, NewVirRs1,VirZero,RegType.NULL,RegType.NULL,Sptr+StackStorage.get(R.VirRs1),-2);
                         NewBlock.CodeList.add(NewLoad);
                         R.VirRs1 = NewVirRs1;
                     }
 
                     if(SpilledNodes.contains(R.VirRs2)){
-                        Integer NewVirRs2 = LocalTempMap.get(R.VirRs2);
-                        LCode NewLoad = new LCode(OpType.lw,NewVirRs2,NewVirRs2,RegType.NULL,RegType.NULL,StrZero,-2);
-                        UCode NewLi = new UCode(OpType.ali,NewVirRs2,RegType.NULL,Sptr +StackStorage.get(R.VirRs2),-2);
-                        NewBlock.CodeList.add(NewLi);
+                        Integer NewVirRs2 =NewVirTemp(R.VirRs2,NewTemps);
+                        LCode NewLoad = new LCode(OpType.plw, NewVirRs2,VirZero,RegType.NULL,RegType.NULL,Sptr+StackStorage.get(R.VirRs2),-2);
                         NewBlock.CodeList.add(NewLoad);
                         R.VirRs2 = NewVirRs2;
                     }
                     NewBlock.CodeList.add(R);
                     if(SpilledNodes.contains(R.VirRd)){
-                        Integer NewVirRd = LocalTempMap.get(R.VirRd);
-                        SCode NewStore = new SCode(OpType.sw,NewVirRd, NewVirRd, RegType.NULL, RegType.NULL, StrZero, -2);
-                        UCode NewLi = new UCode(OpType.ali,NewVirRd,RegType.NULL,Sptr +StackStorage.get(R.VirRd),-2);
-                        NewBlock.CodeList.add(NewLi);
+                        Integer NewVirRd = NewVirTemp(R.VirRd,NewTemps);
+                        SCode NewStore = new SCode(OpType.psw,NewVirRd, VirZero, RegType.NULL, RegType.NULL,Sptr +StackStorage.get(R.VirRd), -2);
                         NewBlock.CodeList.add(NewStore);
                         R.VirRd  = NewVirRd;
                     }
@@ -801,19 +880,16 @@ class GraphColoringPass{
                 else if(Code instanceof ICode){
                     ICode I = (ICode) Code;
                     if(SpilledNodes.contains(I.VirRs)){
-                        Integer NewVirRs = LocalTempMap.get(I.VirRs);
-                        LCode NewLoad = new LCode(OpType.lw,NewVirRs,NewVirRs,RegType.NULL,RegType.NULL,StrZero,-2);
-                        UCode NewLi = new UCode(OpType.ali,NewVirRs,RegType.NULL,Sptr +StackStorage.get(I.VirRs),-2);
-                        NewBlock.CodeList.add(NewLi);
+                        Integer NewVirRs = NewVirTemp(I.VirRs,NewTemps);
+                        LCode NewLoad = new LCode(OpType.plw, NewVirRs,VirZero,RegType.NULL,RegType.NULL,Sptr+StackStorage.get(I.VirRs),-2);
                         NewBlock.CodeList.add(NewLoad);
                         I.VirRs = NewVirRs;
                     }
                     NewBlock.CodeList.add(I);
                     if(SpilledNodes.contains(I.VirRd)){
-                        Integer NewVirRd = LocalTempMap.get(I.VirRd);
-                        SCode NewStore = new SCode(OpType.sw,NewVirRd, NewVirRd, RegType.NULL, RegType.NULL, StrZero, -2);
-                        UCode NewLi = new UCode(OpType.ali,NewVirRd,RegType.NULL,Sptr +StackStorage.get(I.VirRd),-2);
-                        NewBlock.CodeList.add(NewLi);
+                        Integer NewVirRd = NewVirTemp(I.VirRd,NewTemps);
+                        SCode NewStore = new SCode(OpType.psw,NewVirRd, VirZero, RegType.NULL, RegType.NULL,Sptr +StackStorage.get(I.VirRd), -2);
+                        NewBlock.CodeList.add(NewStore);
                         NewBlock.CodeList.add(NewStore);
                         I.VirRd  = NewVirRd;
                     }
@@ -822,10 +898,8 @@ class GraphColoringPass{
                     UCode U = (UCode) Code;
                     NewBlock.CodeList.add(U);
                     if(SpilledNodes.contains(U.VirRd)){
-                        Integer NewVirRd = LocalTempMap.get(U.VirRd);
-                        SCode NewStore = new SCode(OpType.sw,NewVirRd, NewVirRd, RegType.NULL, RegType.NULL, StrZero, -2);
-                        UCode NewLi = new UCode(OpType.ali,NewVirRd,RegType.NULL,Sptr +StackStorage.get(U.VirRd),-2);
-                        NewBlock.CodeList.add(NewLi);
+                        Integer NewVirRd = NewVirTemp(U.VirRd,NewTemps);
+                        SCode NewStore = new SCode(OpType.psw,NewVirRd, VirZero, RegType.NULL, RegType.NULL,Sptr +StackStorage.get(U.VirRd), -2);
                         NewBlock.CodeList.add(NewStore);
                         U.VirRd  = NewVirRd;
                     }
@@ -833,10 +907,8 @@ class GraphColoringPass{
                 else if(Code instanceof BPCode){
                     BPCode BP = (BPCode) Code;
                     if(SpilledNodes.contains(BP.VirRs)){
-                        Integer NewVirRs = LocalTempMap.get(BP.VirRs);
-                        LCode NewLoad = new LCode(OpType.lw,NewVirRs,NewVirRs,RegType.NULL,RegType.NULL,StrZero,-2);
-                        UCode NewLi = new UCode(OpType.ali,NewVirRs,RegType.NULL,Sptr +StackStorage.get(BP.VirRs),-2);
-                        NewBlock.CodeList.add(NewLi);
+                        Integer NewVirRs =NewVirTemp(BP.VirRs,NewTemps);
+                        LCode NewLoad = new LCode(OpType.plw, NewVirRs,VirZero,RegType.NULL,RegType.NULL,Sptr+StackStorage.get(BP.VirRs),-2);
                         NewBlock.CodeList.add(NewLoad);
                         BP.VirRs = NewVirRs;
                     }
@@ -854,10 +926,22 @@ class GraphColoringPass{
         ColoredNodes = new HashSet<>();
         CoalescedNodes = new HashSet<>();
 //直接开栈空间了。
-
     }
 
-
+    Integer NewVirTemp(Integer Vir,HashSet<Integer> HashStorage){
+        Integer NewVir = VirNameHashTable.size();
+        VirNameHashTable.put(MedianTemp+MedianTempNum,NewVir);
+        ++MedianTempNum;
+        HashStorage.add(NewVir);
+        Degree.put(NewVir,0);
+        AdjList.put(NewVir,new HashSet<>());
+        Initial.add(NewVir);
+        MoveList.put(NewVir,new HashSet<>());
+        Alias.put(NewVir,NewVir);
+        SpilledGenerated.add(NewVir);
+        VirNameScoring.put(NewVir,1);
+        return NewVir;
+    }
 
 }
 
@@ -878,10 +962,12 @@ class CFGNode{
 
 class ControlFlowGraph{
     HashMap<String,CFGNode> NodeMap;
+    HashMap<String,CFGNode> CGNodeMap;
     CFGNode StartNode;
-    ControlFlowGraph(HashMap<String,CFGNode> nodeMap,CFGNode startNode){
+    ControlFlowGraph(HashMap<String,CFGNode> nodeMap,  HashMap<String,CFGNode> cgNodeMap,CFGNode startNode){
         NodeMap = nodeMap;
         StartNode = startNode;
+        CGNodeMap = cgNodeMap;
     }
 }
 
@@ -895,103 +981,131 @@ class RePostOrder{
 }
 
 class LivenessAnaysisPass{
-    HashMap<String,HashSet<Integer>> BlockIn;
-    HashMap<String,HashSet<Integer>> BlockOut;
-    HashMap<String,HashSet<Integer>> BlockKill;
-    HashMap<String,HashSet<Integer>> BlockGen;
+    HashMap<Integer,Integer> VirNameScoring;
     List<BlockSection> Blocks;
     HashSet<String> IsChecked;
     RePostOrder Topo;
     CFGNode StartNode;
+    Integer LoopDeep;
     ControlFlowGraph CFG;
-    LivenessAnaysisPass(CFGNode startNode,List<BlockSection> blocks,ControlFlowGraph cfg,String FuncName){
+    HashMap<BaseCode,HashSet<Integer>>AllIn;
+    HashMap<BaseCode,HashSet<Integer>> AllOut;
+    HashMap<String,HashSet<Integer>> BlockOut;
+    LivenessAnaysisPass(CFGNode startNode,List<BlockSection> blocks,ControlFlowGraph cfg,String FuncName,HashMap<Integer,Integer> InitScoring){
         StartNode = startNode;
         Blocks = blocks;
         CFG = cfg;
+        BlockOut = new HashMap<>();
+        AllOut = new HashMap<>();
+        AllIn = new HashMap<>();
         Topo = new RePostOrder(FuncName);
         IsChecked = new HashSet<>();
-        BlockIn = new HashMap<>();
-        BlockOut = new HashMap<>();
-        BlockGen = new HashMap<>();
-        BlockKill = new HashMap<>();
+        VirNameScoring = InitScoring;
+        LoopDeep = 1;
     }
     void Run(){
-        BlockCombine();
-        TopologicalSort(StartNode);
         LiveNessAnalysis();
     }
-    void BlockCombine(){
-        for(BlockSection BlockSec :Blocks){
-            HashSet<Integer> Gen = new HashSet<>();
-            HashSet<Integer> Kill = new HashSet<>();
-            for(int i = 0 ; i < BlockSec.CodeList.size();i++){
-                BaseCode Code = BlockSec.CodeList.get(i);
-                if(Code instanceof LCode){
-                    LCode L = (LCode) Code;
-                    Gen.remove(L.VirRd);
-                    Gen.add(L.VirRs);
-                    Kill.add(L.VirRd);
-                }
-                else if(Code instanceof SCode){
-                    SCode S = (SCode) Code;
-                    Gen.add(S.VirRs1);
-                }
-                else if(Code instanceof PCode){
-                    PCode P = (PCode) Code;
-                    Gen.remove(P.VirRd);
-                    Gen.add(P.VirRs);
-                    Kill.add(P.VirRd);
-                }
-                else if(Code instanceof RCode){
-                    RCode R = (RCode) Code;
-                    Gen.remove(R.VirRd);
-                    Gen.add(R.VirRs1);
-                    Gen.add(R.VirRs2);
-                    Kill.add(R.VirRd);
-                }
-                else if(Code instanceof ICode){
-                    ICode I = (ICode) Code;
-                    Gen.remove(I.VirRd);
-                    Gen.add(I.VirRs);
-                    Kill.add(I.VirRd);
-                }
-                else if(Code instanceof UCode){
-                    UCode U = (UCode) Code;
-                    Gen.remove(U.VirRd);
-                    Kill.add(U.VirRd);
-                }
-                else if(Code instanceof BPCode){
-                    BPCode BP = (BPCode) Code;
-                    Gen.add(BP.VirRs);
-                }
-            }
-            BlockGen.put(BlockSec.IRBlockLabel,Gen);
-            BlockKill.put(BlockSec.IRBlockLabel,Kill);
+    Integer DefDetermine(BaseCode Code){
+        if(Code instanceof SCode) return -1;
+        else if(Code instanceof BPCode) return -1;
+        else if(Code instanceof LCode){
+            LCode L = (LCode) Code;
+            return L.VirRd;
         }
+        else if(Code instanceof PCode){
+            PCode P = (PCode) Code;
+            return P.VirRd;
+        }
+        else if(Code instanceof RCode){
+            RCode R = (RCode) Code;
+            return R.VirRd;
+        }
+        else if(Code instanceof ICode){
+            ICode I = (ICode) Code;
+            return I.VirRd;
+        }
+        else if(Code instanceof UCode){
+            UCode U = (UCode) Code;
+            return U.VirRd;
+        }
+        else  return -2;
     }
+
+    List<Integer> UseDetermine(BaseCode Code){
+        if(Code instanceof SCode) {
+            SCode S = (SCode) Code;
+            return List.of(S.VirRs1,S.VirRs2);
+        }
+        else if(Code instanceof BPCode){
+            BPCode BP = (BPCode) Code;
+            return  List.of(BP.VirRs);
+        }
+        else if(Code instanceof LCode){
+            LCode L = (LCode) Code;
+            return  List.of(L.VirRs);
+        }
+        else if(Code instanceof PCode){
+            PCode P = (PCode) Code;
+            return  List.of(P.VirRs);
+        }
+        else if(Code instanceof RCode){
+            RCode R = (RCode) Code;
+            return  List.of(R.VirRs1,R.VirRs2);
+        }
+        else if(Code instanceof ICode){
+            ICode I = (ICode) Code;
+            return  List.of(I.VirRs);
+        }
+        else if(Code instanceof UCode) return  List.of();
+        else  return List.of();
+    }
+
     void TopologicalSort(CFGNode CurNode){
         if(CurNode == null) return;
         if(IsChecked.contains(CurNode.BlockCodes.IRBlockLabel)) return;
         System.out.println(CurNode.BlockCodes.IRBlockLabel);
         IsChecked.add(CurNode.BlockCodes.IRBlockLabel);
-        TopologicalSort(CurNode.SucNode);
-        TopologicalSort(CurNode.BrSucNode);
+        for(CFGNode Pre : CurNode.PreNodes) TopologicalSort(Pre);
         Topo.RePostOrder.push(CurNode.BlockCodes.IRBlockLabel);
     }
     void LiveNessAnalysis() {
-        boolean IsChanged = false;
-        for (int i = Topo.RePostOrder.size() - 1; i >= 0; i--) {
+       /* for (int i = Topo.RePostOrder.size() - 1; i >= 0; i--) {
             String NodeName = Topo.RePostOrder.get(i);
             HashSet<Integer> Out = new HashSet<>();
             BlockOut.put(NodeName,Out);
+            WorkList.add(NodeName);
         }
-        do {
+        Iterator<String> Iter;
+        while(!WorkList.isEmpty()){
+            Iter = WorkList.iterator();
+            String NodeName = Iter.next();
+            Iter.remove();
+            HashSet<Integer> Old = BlockOut.get(NodeName);
+            HashSet<Integer> In = new HashSet<>();
+            CFGNode Node = CFG.NodeMap.get(NodeName);
+            if(Node.Suc!=null) In.addAll(BlockOut.get(Node.Suc));
+            if(Node.BrSuc!=null) In.addAll(BlockOut.get(Node.BrSuc));
+            //for(CFGNode Pre : Node.PreNodes) In.addAll(BlockOut.get(Pre.BlockCodes.IRBlockLabel));
+            HashSet<Integer> NewOut = new HashSet<>(BlockGen.get(NodeName));
+            In.removeAll(BlockKill.get(NodeName));
+            NewOut.addAll(In);
+            BlockOut.replace(NodeName,NewOut);
+            if(!NewOut.containsAll(Old)){
+                for(CFGNode Pre : Node.PreNodes)WorkList.add(Pre.BlockCodes.IRBlockLabel);
+        //        if(Node.SucNode != null) WorkList.add(Node.Suc);
+        //        if(Node.BrSucNode != null) WorkList.add(Node.BrSuc);
+            }
+        }*/
+      /*  do {
             IsChanged = false;
             for (int i = Topo.RePostOrder.size() - 1; i >= 0; i--) {
                 String NodeName = Topo.RePostOrder.get(i);
                 CFGNode Node = CFG.NodeMap.get(NodeName);
                 HashSet<Integer> In = new HashSet<>();
-                for (CFGNode Pre : Node.PreNodes) In.addAll(BlockOut.get(Pre.BlockCodes.IRBlockLabel));
+                for (CFGNode Pre : Node.PreNodes){
+                    In.addAll(BlockOut.get(Pre.BlockCodes.IRBlockLabel));
+                }
                 HashSet<Integer> Out;
                     HashSet<Integer> NewOut = new HashSet<>(BlockGen.get(NodeName));
                     Out = BlockOut.get(NodeName);
@@ -1003,20 +1117,97 @@ class LivenessAnaysisPass{
                         BlockOut.replace(NodeName, NewOut);
                     }
             }
-        } while (IsChanged);
+        } while (IsChanged);*/
 
-        for (int i = Topo.RePostOrder.size() - 1; i >= 0; i--) {
+        for(BlockSection BlockSec: Blocks) {
+            BlockOut.put(BlockSec.IRBlockLabel,new HashSet<>());
+            for (BaseCode Code : BlockSec.CodeList) {
+                AllIn.put(Code, new HashSet<>());
+                AllOut.put(Code, new HashSet<>());
+            }
+        }
+        boolean IsChanged = true;
+        while(IsChanged) {
+            IsChanged = false;
+            for (BlockSection BlockSec : Blocks) {
+                for (int i = 0 ; i <BlockSec.CodeList.size();++i) {
+                    BaseCode Code = BlockSec.CodeList.get(i);
+                    HashSet<Integer> OldIn;
+                    HashSet<Integer> OldOut;
+                    HashSet<Integer> NewIn;
+                    HashSet<Integer> NewOut;
+                    if (Code instanceof BPCode) {
+                        BPCode BP = (BPCode) Code;
+                        String Aim = BP.Label;
+                        BlockSection AimBlock = CFG.CGNodeMap.get(Aim).BlockCodes;
+                        OldIn = AllIn.get(Code);
+                        OldOut = AllOut.get(Code);
+                        NewOut = new HashSet<>(AllIn.get(BlockSec.CodeList.get(i+1)));
+                        NewIn = new HashSet<>(NewOut);
+                        Integer Def = DefDetermine(Code);
+                        if (Def >= 0) NewIn.remove(Def);
+                        NewIn.addAll(UseDetermine(Code));
+                        if(AimBlock.CodeList.size() != 0 ) NewOut.addAll(AllIn.get(AimBlock.CodeList.get(0)));
+                    } else if (Code instanceof JCode) {
+                        JCode J = (JCode) Code;
+                        String Aim = J.Block;
+                        BlockSection AimBlock = CFG.CGNodeMap.get(Aim).BlockCodes;
+                        OldIn = AllIn.get(Code);
+                        OldOut = AllOut.get(Code);
+
+                        if(AimBlock.CodeList.size() != 0 ) NewOut = new HashSet<>(AllIn.get(AimBlock.CodeList.get(0)));
+                        else NewOut = new HashSet<>();
+                        NewIn = new HashSet<>(NewOut);
+                        Integer Def = DefDetermine(Code);
+                        if (Def >= 0) NewIn.remove(Def);
+                        NewIn.addAll(UseDetermine(Code));
+                        BlockOut.replace(BlockSec.IRBlockLabel,NewOut);
+                    } else if(!(Code instanceof MCode)){
+                        OldIn = AllIn.get(Code);
+                        OldOut = AllOut.get(Code);
+                        if(i+1 < BlockSec.CodeList.size()){
+                            NewOut = new HashSet<>(AllIn.get(BlockSec.CodeList.get(i+1)));
+                            BlockOut.replace(BlockSec.IRBlockLabel,NewOut);
+                        }
+                        else{
+                            NewOut = new HashSet<>();
+                            BlockOut.replace(BlockSec.IRBlockLabel,NewOut);
+                        }
+                        NewIn = new HashSet<>(NewOut);
+                        Integer Def = DefDetermine(Code);
+                        if (Def >= 0) NewIn.remove(Def);
+                        NewIn.addAll(UseDetermine(Code));
+                    }
+                    else{
+                        OldIn = AllIn.get(Code);
+                        OldOut = AllOut.get(Code);
+                        NewIn = new HashSet<>(OldOut);
+                        NewOut = new HashSet<>();
+                    }
+                    AllIn.put(Code,NewIn);
+                    AllOut.put(Code,NewOut);
+                    if(!(OldIn.containsAll(NewIn) &&OldOut.containsAll(NewOut))) IsChanged = true;
+                }
+            }
+        }
+      /*  for (int i = Topo.RePostOrder.size() - 1; i >= 0; i--) {
             String TopNodeName = Topo.RePostOrder.get(i);
             HashSet<Integer> Out = BlockOut.get(TopNodeName);
             System.out.println(TopNodeName + ":");
             for (Integer LiveOut : Out) System.out.print(LiveOut + " ");
             System.out.println();
+        }*/
+        for(BlockSection BlockSec: Blocks) {
+           HashSet<Integer> Out =  BlockOut.get(BlockSec.IRBlockLabel);
+           System.out.println(BlockSec.IRBlockLabel);
+           for(Integer O : Out) System.out.println(O+' ');
         }
     }
 }
 
 class ControlFlowGraphBuildPass{
     HashMap<String,CFGNode> NodeMap;
+    HashMap<String,CFGNode> CGNodeMap;
     FunctionSection FuncSec;
     IRFunc Func;
     HashSet<String> IsReached;
@@ -1025,6 +1216,7 @@ class ControlFlowGraphBuildPass{
         Func = func;
         IsReached = new HashSet<>();
         NodeMap = new HashMap<>();
+        CGNodeMap = new HashMap<>();
     }
     void BuildNode(IRBlock irBlock){
         CFGNode NewNode = new CFGNode(FuncSec.BlocksMap.get(irBlock.getLabel()));
@@ -1039,6 +1231,7 @@ class ControlFlowGraphBuildPass{
             NewNode.BrSuc = null;
         }
         NodeMap.put(irBlock.getLabel(),NewNode);
+        CGNodeMap.put(FuncSec.BlocksMap.get(irBlock.getLabel()).BlockLable,NewNode);
         for(IRBlock Sub : irBlock.getSubBlocks()) BuildNode(Sub);
     }
 
@@ -1056,14 +1249,14 @@ class ControlFlowGraphBuildPass{
         if(CurNode.BrSuc != null){
             CFGNode BrSucNode = NodeMap.get(CurNode.BrSuc);
             CurNode.BrSucNode = BrSucNode;
-            BrSucNode.PreNodes.add(BrSucNode);
+            BrSucNode.PreNodes.add(CurNode);
             BuildGraph(CurNode.BrSuc);
         }
     }
     ControlFlowGraph CFGBuild(){
         BuildNode(Func.getStart());
         BuildGraph(Func.getStart().getLabel());
-        return new ControlFlowGraph(NodeMap,NodeMap.get(Func.getStart().getLabel()));
+        return new ControlFlowGraph(NodeMap,CGNodeMap,NodeMap.get(Func.getStart().getLabel()));
     }
 }
 
@@ -1218,7 +1411,8 @@ class IrTranslationPass{
     void GlobalInit(){
         //用 ConstrStr 和 全局变量 构造全局
         //GlobalVariables = new HashMap<>();
-        FuncCnt = 0;
+        FuncCnt = 11;
+        BlockCnt = 0;
         IrToClang = new HashMap<>();
         //FunctionsCode = new ArrayList<>();
         for(IRModule Module : ModuleList){
@@ -1242,6 +1436,8 @@ class IrTranslationPass{
             put(InstrSeg.mul,OpType.mul);
             put(InstrSeg.div,OpType.div);
             put(InstrSeg.rem,OpType.rem);
+            put(InstrSeg.sll,OpType.sll);
+            put(InstrSeg.sra,OpType.sra);
             put(InstrSeg.and,OpType.and);
             put(InstrSeg.or,OpType.or);
             put(InstrSeg.xor,OpType.xor);
@@ -1339,6 +1535,7 @@ class IrTranslationPass{
 
     void FuncInit(){
         PhiSet = new HashMap<>();
+
         CurFuncInfo.BlockSectionMap = new HashMap<>();
         EndBlock = null;
         CurFuncInfo.VirNameHashTable = new HashMap<>();
@@ -1400,7 +1597,11 @@ class IrTranslationPass{
         if(IsGenerated.contains(CurBlock)) return;
         IsGenerated.add(CurBlock);
         String IrLabel = CurBlock.getLabel();
-        BlockSection NewBlock = new BlockSection(LabelToClang(IrLabel),IrLabel);
+        int LoopStaus;
+        if(CurBlock.getBlockType() == BlockType.LoopCondition) LoopStaus = 1;
+        else if(CurBlock.getBlockType() == BlockType.LoopSuc) LoopStaus = -1;
+        else LoopStaus = 0;
+        BlockSection NewBlock = new BlockSection(LabelToClang(IrLabel),IrLabel,LoopStaus);
         CurFuncInfo.BlockSectionMap.put(CurBlock.getLabel(),NewBlock);
         int Line = 0;
         List<BaseInstr> InstrList = CurBlock.getVarInstrList();
@@ -1413,7 +1614,7 @@ class IrTranslationPass{
                 if(Store.IsRsGlobal){
                     VirRs = VirNameHash(VirT0);
                     UCode NewLi = new UCode(OpType.lui,VirRs,RegType.NULL,Hi+LeftPar+Store.Rs+RightPar,Line);
-                    ICode NewAdd = new ICode(OpType.add,VirRs,VirRs,Lo+LeftPar+Store.Rs+RightPar,RegType.NULL,RegType.NULL,Line);
+                    ICode NewAdd = new ICode(OpType.addi,VirRs,VirRs,Lo+LeftPar+Store.Rs+RightPar,RegType.NULL,RegType.NULL,Line);
                     NewBlock.CodeList.add(NewLi);
                     NewBlock.CodeList.add(NewAdd);
                 }
@@ -1422,7 +1623,7 @@ class IrTranslationPass{
                 if(Store.IsPtrGlobal){
                     VirPtr = VirNameHash(VirT1);
                     UCode NewLi = new UCode(OpType.lui,VirPtr,RegType.NULL,Hi+LeftPar+Store.Ptr+RightPar,Line);
-                    ICode NewAdd = new ICode(OpType.add,VirPtr,VirPtr,Lo+LeftPar+Store.Rs+RightPar,RegType.NULL,RegType.NULL,Line);
+                    ICode NewAdd = new ICode(OpType.addi,VirPtr,VirPtr,Lo+LeftPar+Store.Ptr+RightPar,RegType.NULL,RegType.NULL,Line);
                     NewBlock.CodeList.add(NewLi);
                     NewBlock.CodeList.add(NewAdd);
                     SCode NewStore = new SCode(OpType.sw, VirRs, VirPtr, RegType.NULL, RegType.NULL, StrZero, Line);
@@ -1480,7 +1681,7 @@ class IrTranslationPass{
                 Integer VirRs2;
                 if(Operation.IsRsImm2){
                     UCode NewLi;
-                    if(Operation.Op != InstrSeg.div &&Operation.Op != InstrSeg.rem && Operation.Op != InstrSeg.mul  ) NewLi = new UCode(OpType.ili,VirNameHash(VirT1),RegType.NULL,Operation.Rs2,Line);
+                    if(Operation.Op != InstrSeg.div &&Operation.Op != InstrSeg.rem && Operation.Op != InstrSeg.mul && Operation.Op != InstrSeg.sub ) NewLi = new UCode(OpType.ili,VirNameHash(VirT1),RegType.NULL,Operation.Rs2,Line);
                     else NewLi = new UCode(OpType.li,VirNameHash(VirT1),RegType.NULL,Operation.Rs2,Line);
                     VirRs2 = VirNameHash(VirT1);
                     NewBlock.CodeList.add(NewLi);
@@ -1531,9 +1732,19 @@ class IrTranslationPass{
             else if(Instr instanceof GetelementInstr){
                 GetelementInstr Get = (GetelementInstr) Instr;
                 if(Get.Mode == InstrSeg.index) {
-                    ICode NewMul;
-                    if(Get.IsIndexImm) NewMul = new ICode(OpType.mul, VirNameHash(VirT0), VirNameHash(Get.Index), StrFour, RegType.NULL, RegType.NULL, Line);
-                    else NewMul = new ICode(OpType.mul, VirNameHash(VirT0), VirNameHash(VirZero), Get.Index, RegType.NULL, RegType.NULL, Line);
+                    RCode NewMul;
+                    if(!Get.IsIndexImm) {
+                        UCode NewFourLi = new UCode(OpType.li,VirNameHash(VirT1),RegType.NULL,StrFour,Line);
+                        NewMul = new RCode(OpType.mul, VirNameHash(VirT0), VirNameHash(Get.Index), VirNameHash(VirT1), RegType.NULL, RegType.NULL, RegType.NULL, Line);
+                        NewBlock.CodeList.add(NewFourLi);
+                    }
+                    else{
+                        UCode NewFourLi = new UCode(OpType.li,VirNameHash(VirT1),RegType.NULL,StrFour,Line);
+                        UCode NewIndexLi = new UCode(OpType.li,VirNameHash(VirT0),RegType.NULL,Get.Index,Line);
+                        NewMul = new RCode(OpType.mul, VirNameHash(VirT0),VirNameHash(VirT0)  ,VirNameHash(VirT1),RegType.NULL, RegType.NULL, RegType.NULL, Line);
+                        NewBlock.CodeList.add(NewFourLi);
+                        NewBlock.CodeList.add(NewIndexLi);
+                    }
                     ICode NewAddi = new ICode(OpType.addi,VirNameHash(VirT0),VirNameHash(VirT0),StrFour,RegType.NULL,RegType.NULL,Line);
                     NewBlock.CodeList.add(NewMul);
                     NewBlock.CodeList.add(NewAddi);

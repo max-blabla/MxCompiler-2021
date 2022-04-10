@@ -156,8 +156,9 @@ public class IRBuilder {
        GlobalModule.setName(GlobalName);
        ModuleList.add(GlobalModule);
        Init = new IRFunc("_init",GlobalName,Void);
-       Init.Start = new IRBlock(BlockType.Start, "Start", BlockNum++);
-       Init.End = new IRBlock(BlockType.End, "End", BlockNum++);
+       Init.Start = new IRBlock(BlockType.Start, "Start", BlockNum);
+       Init.End = new IRBlock(BlockType.End, "End", BlockNum);
+       ++BlockNum;
        ReturnInstr NewReturn = new ReturnInstr(InstrSeg.ret, Void, "");
        Init.Start.EndInstr = new BranchInstr(InstrSeg.br, Init.End.Label, "", "");
        Init.End.EndInstr = NewReturn;
@@ -275,8 +276,9 @@ public class IRBuilder {
                 CurModule.Init.Start.InsertInstr(InitCall);
             }
             List<Param> FuncParam = new ArrayList<>();
-            IRBlock StartBlock = new IRBlock(BlockType.Start,"Start",++BlockNum);
-            IRBlock EndBlock = new IRBlock(BlockType.End,"End",++BlockNum);
+            IRBlock StartBlock = new IRBlock(BlockType.Start,"Start",BlockNum);
+            IRBlock EndBlock = new IRBlock(BlockType.End,"End",BlockNum);
+            ++BlockNum;
             FuncForm.Start = StartBlock;
             FuncForm.End = EndBlock;
             StartBlock.EndInstr = new BranchInstr(InstrSeg.br,EndBlock.Label,"","");
@@ -299,8 +301,9 @@ public class IRBuilder {
             IRModule NewModule = new IRModule(ProtectChar + ClassDecl.getClassName());
             NewModule.Init = new IRFunc(StrInit,NewModule.Name, Void);
             List<Param> FuncParam = new ArrayList<>();
-            IRBlock StartBlock = new IRBlock(BlockType.Start, "Start", ++BlockNum);
-            IRBlock EndBlock = new IRBlock(BlockType.End, "End", ++BlockNum);
+            IRBlock StartBlock = new IRBlock(BlockType.Start, "Start", BlockNum);
+            IRBlock EndBlock = new IRBlock(BlockType.End, "End", BlockNum);
+            ++BlockNum;
             NewModule.Init.Start = StartBlock;
             NewModule.Init.End = EndBlock;
             StartBlock.EndInstr = new BranchInstr(InstrSeg.br, EndBlock.Label, "", "");
@@ -517,16 +520,15 @@ public class IRBuilder {
     //先在当前block 塞 跳转
     void WhileStmtIR(StmtAST WhileStmtNode) {
         WhileStmtAST WhileStmt = (WhileStmtAST) WhileStmtNode;
-
-        IRBlock NewConditionBlock = new IRBlock(BlockType.Condition, "While-Condition", BlockNum++);
+        IRBlock NewConditionBlock = new IRBlock(BlockType.LoopCondition, "While-Condition", BlockNum);
         CurBlock.InsertSubBlock(NewConditionBlock);
 
-        IRBlock NewBodyBlock = new IRBlock(BlockType.Body, "While-Body", BlockNum++);
+        IRBlock NewBodyBlock = new IRBlock(BlockType.Body, "While-Body", BlockNum);
         CurBlock.InsertSubBlock(NewBodyBlock);
 
-        IRBlock SucceedBlock = new IRBlock(BlockType.Basic, "Succeed", BlockNum++);
+        IRBlock SucceedBlock = new IRBlock(BlockType.LoopSuc, "Succeed", BlockNum);
         CurBlock.InsertSubBlock(SucceedBlock);
-
+        ++BlockNum;
         BranchInstr PreceedJump = new BranchInstr(InstrSeg.br, NewConditionBlock.Label, "", "");
 
         SucceedBlock.EndInstr = CurBlock.EndInstr;
@@ -550,18 +552,19 @@ public class IRBuilder {
     void IfStmtIR(StmtAST IfStmtNode) {
         IfStmtAST IfStmt = (IfStmtAST) IfStmtNode;
 
-        IRBlock NewConditionBlock = new IRBlock(BlockType.Condition, "If-Condition", BlockNum++);
+        IRBlock NewConditionBlock = new IRBlock(BlockType.Condition, "If-Condition", BlockNum);
         CurBlock.InsertSubBlock(NewConditionBlock);
         BranchInstr PreceedJump = new BranchInstr(InstrSeg.br, NewConditionBlock.Label, "", "");
 
-        IRBlock NewTrueBlock = new IRBlock(BlockType.TrueStmt, "If-True-Stmt", BlockNum++);
+        IRBlock NewTrueBlock = new IRBlock(BlockType.TrueStmt, "If-True-Stmt", BlockNum);
         CurBlock.InsertSubBlock(NewTrueBlock);
 
-        IRBlock NewFalseBlock = new IRBlock(BlockType.FalseStmt, "If-False-Stmt", BlockNum++);
+        IRBlock NewFalseBlock = new IRBlock(BlockType.FalseStmt, "If-False-Stmt", BlockNum);
         CurBlock.InsertSubBlock(NewFalseBlock);
 
-        IRBlock SucceedBlock = new IRBlock(BlockType.Basic, "Succeed", BlockNum++);
+        IRBlock SucceedBlock = new IRBlock(BlockType.Basic, "Succeed", BlockNum);
         CurBlock.InsertSubBlock(SucceedBlock);
+        ++BlockNum;
 
         SucceedBlock.EndInstr = CurBlock.EndInstr;
         CurBlock.EndInstr = PreceedJump;
@@ -608,17 +611,18 @@ public class IRBuilder {
             }
         } else ExprToInstr(CurFunc, ForStmt.getInitExpr());
 
-        IRBlock NewConditionBlock = new IRBlock(BlockType.Condition, "For-Condition", BlockNum++);
+        IRBlock NewConditionBlock = new IRBlock(BlockType.LoopCondition, "For-Condition", BlockNum);
         CurBlock.InsertSubBlock(NewConditionBlock);
 
-        IRBlock NewBodyBlock = new IRBlock(BlockType.Body, "For-Body", BlockNum++);
+        IRBlock NewBodyBlock = new IRBlock(BlockType.Body, "For-Body", BlockNum);
         CurBlock.InsertSubBlock(NewBodyBlock);
 
-        IRBlock IncrBlock = new IRBlock(BlockType.Incr, "For-Incr", BlockNum++);
+        IRBlock IncrBlock = new IRBlock(BlockType.Incr, "For-Incr", BlockNum);
         CurBlock.InsertSubBlock(IncrBlock);
 
-        IRBlock SucceedBlock = new IRBlock(BlockType.Basic, "Succeed", BlockNum++);
+        IRBlock SucceedBlock = new IRBlock(BlockType.LoopSuc, "Succeed", BlockNum);
         CurBlock.InsertSubBlock(SucceedBlock);
+        ++BlockNum;
 
         BranchInstr PreceedJump = new BranchInstr(InstrSeg.br, NewConditionBlock.Label, "", "");
         BranchInstr ForBodyJump = new BranchInstr(InstrSeg.br, IncrBlock.Label, "", "");
@@ -659,11 +663,12 @@ public class IRBuilder {
         //生成新的block
         SuiteAST Suite = (SuiteAST) SuiteNode;
 
-        IRBlock NewBasicBlock = new IRBlock(BlockType.Basic, "Basic", BlockNum++);
+        IRBlock NewBasicBlock = new IRBlock(BlockType.Basic, "Basic", BlockNum);
         CurBlock.InsertSubBlock(NewBasicBlock);
 
-        IRBlock NewSucceedBlock = new IRBlock(BlockType.Basic, "Succeed", BlockNum++);
+        IRBlock NewSucceedBlock = new IRBlock(BlockType.Basic, "Succeed", BlockNum);
         CurBlock.InsertSubBlock(NewSucceedBlock);
+        ++BlockNum;
 
         BranchInstr PreceedJump = new BranchInstr(InstrSeg.br, NewBasicBlock.Label, "", "");
         BranchInstr BasicJump = new BranchInstr(InstrSeg.br, NewSucceedBlock.Label, "", "");
@@ -731,10 +736,11 @@ public class IRBuilder {
             CurBlock.InsertInstr(PtrStore);
         }
         if (CurDemension != AllSize.size()-1) {
-            IRBlock NewCondition = new IRBlock(BlockType.Condition, "NewArrayCondition", BlockNum++);
-            IRBlock NewBlock = new IRBlock(BlockType.Basic, "NewArrayBody", BlockNum++);
-            IRBlock NewIncr = new IRBlock(BlockType.Basic, "NewArrayIncr", BlockNum++);
-            IRBlock NewSucceed = new IRBlock(BlockType.Basic, "Succeed", BlockNum++);
+            IRBlock NewCondition = new IRBlock(BlockType.LoopCondition, "For-NewArrayCondition", BlockNum);
+            IRBlock NewBlock = new IRBlock(BlockType.Body, "For-NewArrayBody", BlockNum);
+            IRBlock NewIncr = new IRBlock(BlockType.Incr, "For-NewArrayIncr", BlockNum);
+            IRBlock NewSucceed = new IRBlock(BlockType.LoopSuc, "Succeed", BlockNum);
+            ++BlockNum;
             CurBlock.InsertSubBlock(NewCondition);
             CurBlock.InsertSubBlock(NewBlock);
             CurBlock.InsertSubBlock(NewIncr);

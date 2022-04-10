@@ -6,6 +6,8 @@ public enum OpType {
     sw,
     lw,
     ili,
+    plw,
+    psw,
     subi,
     xori,
     lui,

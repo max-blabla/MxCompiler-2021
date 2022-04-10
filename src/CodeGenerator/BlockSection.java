@@ -7,10 +7,12 @@ public class BlockSection {
     String BlockLable;
     ArrayList<BaseCode> CodeList;
     String IRBlockLabel;
-    BlockSection(String Lable,String irBlockLabel){
+    int LoopStatus;
+    BlockSection(String Lable,String irBlockLabel,int loopStatus){
         BlockLable = Lable;
         IRBlockLabel = irBlockLabel;
         CodeList = new ArrayList<>();
+        LoopStatus = loopStatus;
     }
 
     public void PhiInsert(BaseCode Code){
